@@ -472,7 +472,7 @@ GameModeID_Demo =		id(GameMode_Demo) ; 8
 GameModeID_Level =		id(GameMode_Level) ; C
 GameModeID_SpecialStage =	id(GameMode_SpecialStage) ; 10
 GameModeID_ContinueScreen =	id(GameMode_ContinueScreen) ; 14
-GameModeID_2PResults =		id(GameMode_2PResults) ; 18
+;GameModeID_2PResults =		id(GameMode_2PResults) ; 18
 GameModeID_2PLevelSelect =	id(GameMode_2PLevelSelect) ; 1C
 GameModeID_EndingSequence =	id(GameMode_EndingSequence) ; 20
 GameModeID_OptionsMenu =	id(GameMode_OptionsMenu) ; 24
@@ -640,7 +640,7 @@ ObjID_BlueBalls =		id(ObjPtr_BlueBalls)		; 1D
 ObjID_CPZSpinTube =		id(ObjPtr_CPZSpinTube)		; 1E
 ObjID_CollapsPform =		id(ObjPtr_CollapsPform)		; 1F
 ObjID_LavaBubble =		id(ObjPtr_LavaBubble)		; 20
-ObjID_2PResults =		id(ObjPtr_2PResults)		; 21
+;ObjID_2PResults =		id(ObjPtr_2PResults)		; 21
 ObjID_ArrowShooter =		id(ObjPtr_ArrowShooter)		; 22
 ObjID_FallingPillar =		id(ObjPtr_FallingPillar)	; 23
 ObjID_ARZBubbles =		id(ObjPtr_ARZBubbles)		; 24
@@ -827,15 +827,15 @@ ObjID_ContinueChars =		id(ObjPtr_ContinueChars)	; DB
 ObjID_RingPrize =		id(ObjPtr_RingPrize)		; DC
 
 ; 2P VS results screens
-offset := TwoPlayerResultsPointers
-ptrsize := 8
-idstart := 0
-
-VsRSID_Act =	id(VsResultsScreen_Act)		; 0
-VsRSID_Zone =	id(VsResultsScreen_Zone)	; 1
-VsRSID_Game =	id(VsResultsScreen_Game)	; 2
-VsRSID_SS =	id(VsResultsScreen_SS)		; 3
-VsRSID_SSZone =	id(VsResultsScreen_SSZone)	; 4
+;offset := TwoPlayerResultsPointers
+;ptrsize := 8
+;idstart := 0
+;
+;VsRSID_Act =	id(VsResultsScreen_Act)		; 0
+;VsRSID_Zone =	id(VsResultsScreen_Zone)	; 1
+;VsRSID_Game =	id(VsResultsScreen_Game)	; 2
+;VsRSID_SS =	id(VsResultsScreen_SS)		; 3
+;VsRSID_SSZone =	id(VsResultsScreen_SSZone)	; 4
 
 ; Animation IDs
 offset :=	SonicAniData
