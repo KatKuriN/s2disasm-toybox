@@ -10570,11 +10570,9 @@ OptionScreen_Main:
 ; loc_909A:
 OptionScreen_Select:
 	move.b	(Options_menu_box).w,d0
-	bne.s	OptionScreen_Select_Not1P
+	bne.s	OptionScreen_Select_Other
 	; Start a single player game
 	moveq	#0,d0
-	move.w	d0,(Two_player_mode).w
-	move.w	d0,(Two_player_mode_copy).w
     if emerald_hill_zone_act_1=0
 	move.w	d0,(Current_ZoneAndAct).w ; emerald_hill_zone_act_1
     else
@@ -10592,29 +10590,6 @@ OptionScreen_Select:
 	move.l	d0,(Got_Emeralds_array+4).w
     endif
 	move.b	#GameModeID_Level,(Game_Mode).w ; => Level (Zone play mode)
-	rts
-; ===========================================================================
-; loc_90B6:
-OptionScreen_Select_Not1P:
-	subq.b	#1,d0
-	bne.s	OptionScreen_Select_Other
-	; Start a 2P VS game
-	moveq	#1,d0
-	move.w	d0,(Two_player_mode).w
-	move.w	d0,(Two_player_mode_copy).w
-    if fixBugs
-	; The game forgets to reset these variables here, making it possible
-	; for the player to play two player mode with all emeralds collected,
-	; allowing them to use Super Sonic. This code is borrowed from
-	; similar logic in the title screen, which doesn't make this mistake.
-	moveq	#0,d0
-	move.w	d0,(Got_Emerald).w
-	move.l	d0,(Got_Emeralds_array).w
-	move.l	d0,(Got_Emeralds_array+4).w
-    endif
-	move.b	#GameModeID_2PLevelSelect,(Game_Mode).w ; => LevelSelectMenu2P
-	move.b	#0,(Current_Zone_2P).w
-	move.w	#0,(Player_mode).w
 	rts
 ; ===========================================================================
 ; loc_90D8:
@@ -10635,13 +10610,13 @@ OptionScreen_Controls:
 	beq.s	+
 	subq.b	#1,d2
 	bcc.s	+
-	move.b	#2,d2
+	move.b	#1,d2
 
 +
 	btst	#button_down,d0
 	beq.s	+
 	addq.b	#1,d2
-	cmpi.b	#3,d2
+	cmpi.b	#2,d2
 	blo.s	+
 	moveq	#0,d2
 
@@ -10668,7 +10643,7 @@ OptionScreen_Controls:
 +
     if fixBugs
 	; Based on code from the Level Select.
-	cmpi.b	#2,(Options_menu_box).w
+	cmpi.b	#1,(Options_menu_box).w
 	bne.s	+
 	btst	#button_A,d0
 	beq.s	+
@@ -10690,7 +10665,7 @@ OptionScreen_Controls:
 
 +
 	move.w	d2,(a1)
-	cmpi.b	#2,(Options_menu_box).w
+	cmpi.b	#1,(Options_menu_box).w
 	bne.s	+	; rts
 	andi.w	#button_B_mask|button_C_mask,d0
 	beq.s	+	; rts
@@ -10711,7 +10686,7 @@ OptionScreen_Controls:
 ; word_917A:
 OptionScreen_Choices:
 	dc.l (3-1)<<24|(Player_option&$FFFFFF)
-	dc.l (2-1)<<24|(Two_player_items&$FFFFFF)
+;	dc.l (2-1)<<24|(Two_player_items&$FFFFFF)
 	dc.l ($100-1)<<24|(Sound_test_sound&$FFFFFF)
 
 ; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
@@ -10731,7 +10706,7 @@ OptionScreen_DrawSelected:
 	bsr.w	MenuScreenTextToRAM
 	lea	(Chunk_Table+$B6).l,a2
 	moveq	#0,d1
-	cmpi.b	#2,(Options_menu_box).w
+	cmpi.b	#1,(Options_menu_box).w
 	beq.s	+
 	move.b	(Options_menu_box).w,d1
 	lsl.w	#2,d1
@@ -10742,7 +10717,7 @@ OptionScreen_DrawSelected:
 +
 	movea.l	(a4,d1.w),a1
 	bsr.w	MenuScreenTextToRAM
-	cmpi.b	#2,(Options_menu_box).w
+	cmpi.b	#1,(Options_menu_box).w
 	bne.s	+
 	lea	(Chunk_Table+$C2).l,a2
 	bsr.w	OptionScreen_HexDumpSoundTest
@@ -10768,7 +10743,7 @@ OptionScreen_DrawUnselected:
 	bsr.w	MenuScreenTextToRAM
 	lea	(Chunk_Table+$216).l,a2
 	moveq	#0,d1
-	cmpi.b	#2,(Options_menu_box).w
+	cmpi.b	#1,(Options_menu_box).w
 	beq.s	+
 	move.b	(Options_menu_box).w,d1
 	lsl.w	#2,d1
@@ -10780,7 +10755,7 @@ OptionScreen_DrawUnselected:
 +
 	movea.l	(a4,d1.w),a1
 	bsr.w	MenuScreenTextToRAM
-	cmpi.b	#2,(Options_menu_box).w
+	cmpi.b	#1,(Options_menu_box).w
 	bne.s	+
 	lea	(Chunk_Table+$222).l,a2
 	bsr.w	OptionScreen_HexDumpSoundTest
@@ -10801,13 +10776,13 @@ OptionScreen_SelectTextPtr:
 	lea	(off_92DE).l,a4
 
 +
+;	tst.b	(Options_menu_box).w
+;	beq.s	+
+;	lea	(off_92EA).l,a4
+;
+;+
 	tst.b	(Options_menu_box).w
-	beq.s	+
-	lea	(off_92EA).l,a4
-
-+
-	cmpi.b	#2,(Options_menu_box).w
-	bne.s	+	; rts
+	beq.s	+	; rts
 	lea	(off_92F2).l,a4
 
 +
@@ -10843,7 +10818,7 @@ boxData macro txtlabel,vramAddr
     endm
 
 	boxData	TextOptScr_PlayerSelect,VRAM_Plane_A_Name_Table+planeLoc(64,9,3)
-	boxData	TextOptScr_VsModeItems,VRAM_Plane_A_Name_Table+planeLoc(64,9,11)
+;	boxData	TextOptScr_VsModeItems,VRAM_Plane_A_Name_Table+planeLoc(64,9,11)
 	boxData	TextOptScr_SoundTest,VRAM_Plane_A_Name_Table+planeLoc(64,9,19)
 
 off_92D2:
@@ -10854,9 +10829,9 @@ off_92DE:
 	dc.l TextOptScr_SonicAndTails
 	dc.l TextOptScr_SonicAlone
 	dc.l TextOptScr_TailsAlone
-off_92EA:
-	dc.l TextOptScr_AllKindsItems
-	dc.l TextOptScr_TeleportOnly
+;off_92EA:
+;	dc.l TextOptScr_AllKindsItems
+;	dc.l TextOptScr_TeleportOnly
 off_92F2:
 	dc.l TextOptScr_0
 ; ===========================================================================
@@ -11420,9 +11395,9 @@ TextOptScr_SonicAndTails:	menutxt	"SONIC AND TAILS"	; byte_97EC:
 TextOptScr_SonicAlone:		menutxt	"SONIC ALONE    "	; byte_97FC:
 TextOptScr_MilesAlone:		menutxt	"MILES ALONE    "	; byte_980C:
 TextOptScr_TailsAlone:		menutxt	"TAILS ALONE    "	; byte_981C:
-TextOptScr_VsModeItems:		menutxt	"* VS MODE ITEMS *"	; byte_982C:
-TextOptScr_AllKindsItems:	menutxt	"ALL KINDS ITEMS"	; byte_983E:
-TextOptScr_TeleportOnly:	menutxt	"TELEPORT ONLY  "	; byte_984E:
+;TextOptScr_VsModeItems:		menutxt	"* VS MODE ITEMS *"	; byte_982C:
+;TextOptScr_AllKindsItems:	menutxt	"ALL KINDS ITEMS"	; byte_983E:
+;TextOptScr_TeleportOnly:	menutxt	"TELEPORT ONLY  "	; byte_984E:
 TextOptScr_SoundTest:		menutxt	"*  SOUND TEST   *"	; byte_985E:
 TextOptScr_0:			menutxt	"      00       "	; byte_9870:
 
