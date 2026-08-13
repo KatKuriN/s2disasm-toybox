@@ -4396,10 +4396,6 @@ TitleScreen_Demo:
 +
 	move.w	#1,(Demo_mode_flag).w
 	move.b	#GameModeID_Demo,(Game_Mode).w ; => Level (Demo mode)
-	cmpi.w	#emerald_hill_zone_act_1,(Current_ZoneAndAct).w
-	bne.s	+
-	move.w	#1,(Two_player_mode).w
-+
 	move.b	#3,(Life_count).w
 	move.b	#3,(Life_count_2P).w
 
@@ -10489,1016 +10485,6 @@ Ani_objDB:	offsetTable
 ; -------------------------------------------------------------------------------
 ObjDA_MapUnc_7CB6:	include	"mappings/sprite/objDA.asm"
 
-	jmpTos JmpTo_Adjust2PArtPointer2,JmpTo_Adjust2PArtPointer
-
-
-
-
-; ===========================================================================
-; loc_7D50:
-TwoPlayerResults:
-	bsr.w	Pal_FadeToBlack
-	move	#$2700,sr
-	move.w	(VDP_Reg1_val).w,d0
-	andi.b	#$BF,d0
-	move.w	d0,(VDP_control_port).l
-	bsr.w	ClearScreen
-	lea	(VDP_control_port).l,a6
-	move.w	#$8004,(a6)		; H-INT disabled
-	move.w	#$8200|(VRAM_Menu_Plane_A_Name_Table/$400),(a6)	; PNT A base: $C000
-	move.w	#$8400|(VRAM_Menu_Plane_B_Name_Table/$2000),(a6)	; PNT B base: $E000
-	move.w	#$8200|(VRAM_Menu_Plane_A_Name_Table/$400),(a6)	; PNT A base: $C000
-	move.w	#$8700,(a6)		; Background palette/color: 0/0
-	move.w	#$8C81,(a6)		; H res 40 cells, no interlace, S/H disabled
-	move.w	#$9001,(a6)		; Scroll table size: 64x32
-
-	clearRAM Object_Display_Lists,Object_Display_Lists_End
-	clearRAM Object_RAM,Object_RAM_End
-
-	move.l	#vdpComm(tiles_to_bytes(ArtTile_ArtNem_FontStuff),VRAM,WRITE),(VDP_control_port).l
-	lea	(ArtNem_FontStuff).l,a0
-	bsr.w	NemDec
-	move.l	#vdpComm(tiles_to_bytes(ArtTile_ArtNem_1P2PWins),VRAM,WRITE),(VDP_control_port).l
-	lea	(ArtNem_1P2PWins).l,a0
-	bsr.w	NemDec
-	lea	(Chunk_Table).l,a1
-	lea	(MapEng_MenuBack).l,a0
-	move.w	#make_art_tile(ArtTile_VRAM_Start,3,0),d0
-	bsr.w	EniDec
-	lea	(Chunk_Table).l,a1
-	move.l	#vdpComm(VRAM_Plane_B_Name_Table,VRAM,WRITE),d0
-	moveq	#40-1,d1
-	moveq	#28-1,d2
-    if removeJmpTos
-	jsr	(PlaneMapToVRAM_H40).l
-    else
-	bsr.w	PlaneMapToVRAM_H40
-    endif
-	move.w	(Results_Screen_2P).w,d0
-	add.w	d0,d0
-	add.w	d0,d0
-	add.w	d0,d0
-	lea	TwoPlayerResultsPointers(pc),a2
-	movea.l	(a2,d0.w),a0
-	movea.l	4(a2,d0.w),a2
-	lea	(Chunk_Table).l,a1
-	move.w	#make_art_tile(ArtTile_VRAM_Start,0,0),d0
-	bsr.w	EniDec
-	jsr	(a2)	; dynamic call! to Setup2PResults_Act, Setup2PResults_Zone, Setup2PResults_Game, Setup2PResults_SpecialAct, or Setup2PResults_SpecialZone, assuming the pointers in TwoPlayerResultsPointers have not been changed
-	lea	(Chunk_Table).l,a1
-	move.l	#vdpComm(tiles_to_bytes(ArtTile_TwoPlayerResults),VRAM,WRITE),d0
-	moveq	#40-1,d1
-	moveq	#28-1,d2
-    if removeJmpTos
-	jsr	(PlaneMapToVRAM_H40).l
-    else
-	bsr.w	PlaneMapToVRAM_H40
-    endif
-	ResetDMAQueue
-	clr.b	(Level_started_flag).w
-	clr.w	(Anim_Counters).w
-	lea	(Anim_SonicMilesBG).l,a2
-	jsrto	JmpTo_Dynamic_Normal
-	moveq	#PLCID_Std1,d0
-	bsr.w	LoadPLC2
-	moveq	#PalID_Menu,d0
-	bsr.w	PalLoad_ForFade
-	moveq	#0,d0
-	move.b	#MusID_2PResult,d0
-	cmp.w	(Level_Music).w,d0
-	beq.s	+
-	move.w	d0,(Level_Music).w
-	bsr.w	PlayMusic
-+
-	move.w	#(30*60)-1,(Demo_Time_left).w	; 30 seconds
-	clr.w	(Two_player_mode).w
-	clr.l	(Camera_X_pos).w
-	clr.l	(Camera_Y_pos).w
-	clr.l	(Vscroll_Factor).w
-	clr.l	(Vscroll_Factor_P2).w
-	clr.l	(Vscroll_Factor_P2_HInt).w
-	move.b	#ObjID_2PResults,(VSResults_HUD+id).w
-	move.b	#VintID_Menu,(Vint_routine).w
-	bsr.w	WaitForVint
-	move.w	(VDP_Reg1_val).w,d0
-	ori.b	#$40,d0
-	move.w	d0,(VDP_control_port).l
-	bsr.w	Pal_FadeFromBlack
-
--	move.b	#VintID_Menu,(Vint_routine).w
-	bsr.w	WaitForVint
-	lea	(Anim_SonicMilesBG).l,a2
-	jsrto	JmpTo_Dynamic_Normal
-	jsr	(RunObjects).l
-	jsr	(BuildSprites).l
-	bsr.w	RunPLC_RAM
-	tst.l	(Plc_Buffer).w
-	bne.s	-
-	move.b	(Ctrl_1_Press).w,d0
-	or.b	(Ctrl_2_Press).w,d0
-	andi.b	#button_start_mask,d0
-	beq.s	-			; stay on that screen until either player presses start
-
-	move.w	(Results_Screen_2P).w,d0 ; were we at the act results screen? (VsRSID_Act)
-	bne.w	TwoPlayerResultsDone_Zone ; if not, branch
-	tst.b	(Current_Act).w		; did we just finish act 1?
-	bne.s	+			; if not, branch
-	addq.b	#1,(Current_Act).w	; go to the next act
-	move.b	#1,(Current_Act_2P).w
-	move.b	#GameModeID_Level,(Game_Mode).w ; => Level (Zone play mode)
-	move.b	#0,(Last_star_pole_hit).w
-	move.b	#0,(Last_star_pole_hit_2P).w
-	moveq	#1,d0
-	move.w	d0,(Two_player_mode).w
-	move.w	d0,(Two_player_mode_copy).w
-	moveq	#0,d0
-	move.l	d0,(Score).w
-	move.l	d0,(Score_2P).w
-	move.l	#5000,(Next_Extra_life_score).w
-	move.l	#5000,(Next_Extra_life_score_2P).w
-	rts
-; ===========================================================================
-+	; Displays results for the zone
-	move.b	#2,(Current_Act_2P).w
-	bsr.w	sub_84A4
-	lea	(SS_Total_Won).w,a4
-	clr.w	(a4)
-	bsr.s	sub_7F9A
-	bsr.s	sub_7F9A
-	move.b	(a4),d1
-	sub.b	1(a4),d1
-	beq.s	+		; if there's a tie, branch
-	move.w	#VsRSID_Zone,(Results_Screen_2P).w
-	move.b	#GameModeID_2PResults,(Game_Mode).w ; => TwoPlayerResults
-	rts
-; ===========================================================================
-+	; There's a tie, play a special stage
-	move.b	(Current_Zone_2P).w,d0
-	addq.b	#1,d0
-	move.b	d0,(Current_Special_Stage).w
-	move.w	#VsRSID_SS,(Results_Screen_2P).w
-	move.b	#1,(f_bigring).w
-	move.b	#GameModeID_SpecialStage,(Game_Mode).w ; => SpecialStage
-	moveq	#1,d0
-	move.w	d0,(Two_player_mode).w
-	move.w	d0,(Two_player_mode_copy).w
-	move.b	#0,(Last_star_pole_hit).w
-	move.b	#0,(Last_star_pole_hit_2P).w
-	rts
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_7F9A:
-	moveq	#0,d1
-	move.b	(a5),d1
-	sub.b	1(a5),d1
-	beq.s	++
-	bcs.s	+
-	addq.b	#1,(a4)
-	bra.s	++
-; ===========================================================================
-+
-	addq.b	#1,1(a4)
-+
-	addq.w	#2,a5
-	rts
-; End of function sub_7F9A
-
-; ===========================================================================
-
-; loc_7FB2:
-TwoPlayerResultsDone_Zone:
-	subq.w	#1,d0			; were we at the zone results screen? (VsRSID_Zone)
-	bne.s	TwoPlayerResultsDone_Game ; if not, branch
-
-; loc_7FB6:
-TwoPlayerResultsDone_ZoneOrSpecialStages:
-	lea	(Results_Data_2P).w,a4
-	moveq	#0,d0
-	moveq	#0,d1
-    rept 3
-	move.w	(a4)+,d0
-	add.l	d0,d1
-	move.w	(a4)+,d0
-	add.l	d0,d1
-	addq.w	#2,a4
-    endm
-	move.w	(a4)+,d0
-	add.l	d0,d1
-	move.w	(a4)+,d0
-	add.l	d0,d1
-	swap	d1
-	tst.w	d1	; have all levels been completed?
-	bne.s	+	; if not, branch
-	move.w	#VsRSID_Game,(Results_Screen_2P).w
-	move.b	#GameModeID_2PResults,(Game_Mode).w ; => TwoPlayerResults
-	rts
-; ===========================================================================
-+
-	tst.w	(Game_Over_2P).w
-	beq.s	+		; if there's a Game Over, clear the results
-	lea	(Results_Data_2P).w,a1
-
-	moveq	#bytesToWcnt(Results_Data_2P_End-Results_Data_2P),d0
--	move.w	#-1,(a1)+
-	dbf	d0,-
-
-	move.b	#3,(Life_count).w
-	move.b	#3,(Life_count_2P).w
-+
-	move.b	#GameModeID_2PLevelSelect,(Game_Mode).w ; => LevelSelectMenu2P
-	rts
-; ===========================================================================
-; loc_8020:
-TwoPlayerResultsDone_Game:
-	subq.w	#1,d0	; were we at the game results screen? (VsRSID_Game)
-	bne.s	TwoPlayerResultsDone_SpecialStage ; if not, branch
-	move.b	#GameModeID_SegaScreen,(Game_Mode).w ; => SegaScreen
-	rts
-; ===========================================================================
-; loc_802C:
-TwoPlayerResultsDone_SpecialStage:
-	subq.w	#1,d0			; were we at the special stage results screen? (VsRSID_SS)
-	bne.w	TwoPlayerResultsDone_SpecialStages ; if not, branch
-	cmpi.b	#3,(Current_Zone_2P).w	; do we come from the special stage "zone"?
-	beq.s	+			; if yes, branch
-	move.w	#VsRSID_Zone,(Results_Screen_2P).w ; show zone results after tiebreaker special stage
-	move.b	#GameModeID_2PResults,(Game_Mode).w ; => TwoPlayerResults
-	rts
-; ===========================================================================
-+
-	tst.b	(Current_Act_2P).w
-	beq.s	+
-	cmpi.b	#2,(Current_Act_2P).w
-	beq.s	loc_80AC
-	bsr.w	sub_84A4
-	lea	(SS_Total_Won).w,a4
-	clr.w	(a4)
-	bsr.s	sub_8094
-	bsr.s	sub_8094
-	move.b	(a4),d1
-	sub.b	1(a4),d1
-	bne.s	loc_80AC
-+
-	addq.b	#1,(Current_Act_2P).w
-	addq.b	#1,(Current_Special_Stage).w
-	move.w	#VsRSID_SS,(Results_Screen_2P).w
-	move.b	#1,(f_bigring).w
-	move.b	#GameModeID_SpecialStage,(Game_Mode).w ; => SpecialStage
-	move.w	#1,(Two_player_mode).w
-	move.w	#0,(Level_Music).w
-	rts
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_8094:
-	moveq	#0,d1
-	move.b	(a5),d1
-	sub.b	1(a5),d1
-	beq.s	++
-	bcs.s	+
-	addq.b	#1,(a4)
-	bra.s	++
-; ===========================================================================
-+
-	addq.b	#1,1(a4)
-+
-	addq.w	#2,a5
-	rts
-; End of function sub_8094
-
-; ===========================================================================
-
-loc_80AC:
-	move.w	#VsRSID_SSZone,(Results_Screen_2P).w
-	move.b	#GameModeID_2PResults,(Game_Mode).w ; => TwoPlayerResults
-	rts
-; ===========================================================================
-; loc_80BA: BranchTo_loc_7FB6:
-TwoPlayerResultsDone_SpecialStages:
-	; we were at the special stages results screen (VsRSID_SSZone)
-	bra.w	TwoPlayerResultsDone_ZoneOrSpecialStages
-
-; ===========================================================================
-; ----------------------------------------------------------------------------
-; Object 21 - Score/Rings/Time display (in 2P results)
-; ----------------------------------------------------------------------------
-; Sprite_80BE:
-Obj21: ; (screen-space obj)
-	moveq	#0,d0
-	move.b	routine(a0),d0
-	move.w	Obj21_Index(pc,d0.w),d1
-	jmp	Obj21_Index(pc,d1.w)
-; ===========================================================================
-; JmpTbl_80CC: Obj21_States:
-Obj21_Index:	offsetTable
-		offsetTableEntry.w Obj21_Init	; 0
-		offsetTableEntry.w Obj21_Main	; 2
-; ---------------------------------------------------------------------------
-obj21_make_position macro x,y
-	dc.w spriteScreenPositionXCentered(x), spriteScreenPositionYCentered(y)
-    endm
-
-; word_80D0:
-Obj21_PositionTable:
-	;                     x, y
-	obj21_make_position -48,88
-	obj21_make_position -48,64
-	obj21_make_position -64,88
-	obj21_make_position -48,88
-	obj21_make_position -48,88
-; ===========================================================================
-; loc_80E4:
-Obj21_Init:
-	addq.b	#2,routine(a0) ; => Obj21_Main
-	move.w	(Results_Screen_2P).w,d0
-	add.w	d0,d0
-	add.w	d0,d0
-	move.l	Obj21_PositionTable(pc,d0.w),x_pixel(a0) ; and y_pixel(a0)
-	move.l	#Obj21_MapUnc_8146,mappings(a0)
- 	move.w	#make_art_tile(ArtTile_ArtNem_1P2PWins,0,0),art_tile(a0)
-	jsrto	JmpTo2_Adjust2PArtPointer
-	move.b	#0,render_flags(a0)
-	move.b	#0,priority(a0)
-	moveq	#2,d1
-	move.b	(SS_Total_Won).w,d0	; d0 = SS_Total_Won_1P
-	sub.b	(SS_Total_Won+1).w,d0	;    - SS_Total_Won_2P
-	beq.s	++
-	bcs.s	+
-	moveq	#0,d1
-	bra.s	++
-; ---------------------------------------------------------------------------
-+
-	moveq	#1,d1
-+
-	move.b	d1,mapping_frame(a0)
-
-; loc_812C:
-Obj21_Main:
-	andi.w	#tile_mask,art_tile(a0)
-	btst	#3,(Vint_runcount+3).w
-	beq.s	JmpTo4_DisplaySprite
-	ori.w	#palette_line_1,art_tile(a0)
-
-JmpTo4_DisplaySprite ; JmpTo
-	jmp	(DisplaySprite).l
-; ===========================================================================
-; --------------------------------------------------------------------------
-; sprite mappings
-; --------------------------------------------------------------------------
-Obj21_MapUnc_8146:	include "mappings/sprite/obj21.asm"
-; ===========================================================================
-
-; loc_819A:
-Setup2PResults_Act:
-	move.w	#$1F2,d2
-	moveq	#0,d0
-	bsr.w	sub_8672
-	move.w	#$216,d2
-	moveq	#0,d1
-	move.b	(Current_Act_2P).w,d1
-	addq.b	#1,d1
-	bsr.w	sub_86B0
-	move.w	#$33E,d2
-	move.l	(Score).w,d1
-	bsr.w	sub_86F6
-	move.w	#$352,d2
-	move.l	(Score_2P).w,d1
-	bsr.w	sub_86F6
-	move.w	#$3DA,d2
-	moveq	#0,d0
-	move.w	(Timer_minute_word).w,d1
-	bsr.w	sub_86B0
-	move.w	#$3E0,d2
-	moveq	#0,d1
-	move.b	(Timer_second).w,d1
-	bsr.w	sub_86B0
-	move.w	#$3E6,d2
-	moveq	#0,d1
-	move.b	(Timer_frame).w,d1
-	mulu.w	#$1B0,d1
-	lsr.l	#8,d1
-	bsr.w	sub_86B0
-	move.w	#$3EE,d2
-	moveq	#0,d0
-	move.w	(Timer_minute_word_2P).w,d1
-	bsr.w	sub_86B0
-	move.w	#$3F4,d2
-	moveq	#0,d1
-	move.b	(Timer_second_2P).w,d1
-	bsr.w	sub_86B0
-	move.w	#$3FA,d2
-	moveq	#0,d1
-	move.b	(Timer_frame_2P).w,d1
-	mulu.w	#$1B0,d1
-	lsr.l	#8,d1
-	bsr.w	sub_86B0
-	move.w	#$486,d2
-	moveq	#0,d0
-	move.w	(Ring_count).w,d1
-	bsr.w	sub_86B0
-	move.w	#$49A,d2
-	move.w	(Ring_count_2P).w,d1
-	bsr.w	sub_86B0
-	move.w	#$526,d2
-	moveq	#0,d0
-	move.w	(Rings_Collected).w,d1
-	bsr.w	sub_86B0
-	move.w	#$53A,d2
-	move.w	(Rings_Collected_2P).w,d1
-	bsr.w	sub_86B0
-	move.w	#$5C6,d2
-	moveq	#0,d0
-	move.w	(Monitors_Broken).w,d1
-	bsr.w	sub_86B0
-	move.w	#$5DA,d2
-	move.w	(Monitors_Broken_2P).w,d1
-	bsr.w	sub_86B0
-	bsr.w	sub_8476
-	move.w	#$364,d2
-	move.w	#$6000,d0
-	move.l	(Score).w,d1
-	sub.l	(Score_2P).w,d1
-	bsr.w	sub_8652
-	move.w	#$404,d2
-	move.l	(Timer_2P).w,d1
-	sub.l	(Timer).w,d1
-	bsr.w	sub_8652
-	move.w	#$4A4,d2
-	moveq	#0,d1
-	move.w	(Ring_count).w,d1
-	sub.w	(Ring_count_2P).w,d1
-	bsr.w	sub_8652
-	move.w	#$544,d2
-	moveq	#0,d1
-	move.w	(Rings_Collected).w,d1
-	sub.w	(Rings_Collected_2P).w,d1
-	bsr.w	sub_8652
-	move.w	#$5E4,d2
-	moveq	#0,d1
-	move.w	(Monitors_Broken).w,d1
-	sub.w	(Monitors_Broken_2P).w,d1
-	bsr.w	sub_8652
-	move.w	#$706,d2
-	moveq	#0,d0
-	moveq	#0,d1
-	move.b	(a4),d1
-	bsr.w	sub_86B0
-	move.w	#$70E,d2
-	moveq	#0,d1
-	move.b	1(a4),d1
-	bsr.w	sub_86B0
-	move.w	(a4),(SS_Total_Won).w
-	rts
-; ===========================================================================
-; loc_82FA:
-Setup2PResults_Zone:
-	move.w	#$242,d2
-	moveq	#0,d0
-	bsr.w	sub_8672
-	bsr.w	sub_84A4
-	lea	(SS_Total_Won).w,a4
-	clr.w	(a4)
-	move.w	#$398,d6
-	bsr.w	sub_854A
-	move.w	#$488,d6
-	bsr.w	sub_854A
-	move.w	#$618,d6
-	bsr.w	sub_854A
-	rts
-; ===========================================================================
-; loc_8328:
-Setup2PResults_Game:
-	lea	(Results_Data_2P).w,a5
-	lea	(SS_Total_Won).w,a4
-	clr.w	(a4)
-	move.w	#$208,d6
-	bsr.w	sub_84C4
-	move.w	#$258,d6
-	bsr.w	sub_84C4
-	move.w	#$2A8,d6
-	bsr.w	sub_84C4
-	move.w	#$348,d6
-	bsr.w	sub_84C4
-	move.w	#$398,d6
-	bsr.w	sub_84C4
-	move.w	#$3E8,d6
-	bsr.w	sub_84C4
-	move.w	#$488,d6
-	bsr.w	sub_84C4
-	move.w	#$4D8,d6
-	bsr.w	sub_84C4
-	move.w	#$528,d6
-	bsr.w	sub_84C4
-	move.w	#$5C8,d6
-	bsr.w	sub_84C4
-	move.w	#$618,d6
-	bsr.w	sub_84C4
-	move.w	#$668,d6
-	bsr.w	sub_84C4
-	move.w	#$70A,d2
-	moveq	#0,d0
-	moveq	#0,d1
-	move.b	(a4),d1
-	bsr.w	sub_86B0
-	move.w	#$710,d2
-	moveq	#0,d1
-	move.b	1(a4),d1
-	bsr.w	sub_86B0
-	rts
-; ===========================================================================
-; loc_83B0:
-Setup2PResults_SpecialAct:
-	move.w	#$266,d2
-	moveq	#0,d1
-	move.b	(Current_Act_2P).w,d1
-	addq.b	#1,d1
-	bsr.w	sub_86B0
-	move.w	#$4D6,d2
-	moveq	#0,d0
-	move.w	(SS2p_RingBuffer).w,d1		; P1 SS act 1 rings
-	bsr.w	sub_86B0
-	move.w	#$4E6,d2
-	move.w	(SS2p_RingBuffer+2).w,d1	; P2 SS act 1 rings
-	bsr.w	sub_86B0
-	move.w	#$576,d2
-	moveq	#0,d0
-	move.w	(SS2p_RingBuffer+4).w,d1	; P1 SS act 2 rings
-	bsr.w	sub_86B0
-	move.w	#$586,d2
-	move.w	(SS2p_RingBuffer+6).w,d1	; P2 SS act 2 rings
-	bsr.w	sub_86B0
-	move.w	#$616,d2
-	moveq	#0,d0
-	move.w	(SS2p_RingBuffer+8).w,d1	; P1 SS act 3 rings
-	bsr.w	sub_86B0
-	move.w	#$626,d2
-	move.w	(SS2p_RingBuffer+$A).w,d1	; P2 SS act 3 rings
-	bsr.w	sub_86B0
-	bsr.w	sub_8476
-	move.w	#$6000,d0
-	move.w	#$4F0,d2
-	moveq	#0,d1
-	move.w	(SS2p_RingBuffer).w,d1		; P1 SS act 1 rings
-	sub.w	(SS2p_RingBuffer+2).w,d1	; P2 SS act 1 rings
-	bsr.w	sub_8652
-	move.w	#$590,d2
-	moveq	#0,d1
-	move.w	(SS2p_RingBuffer+4).w,d1	; P1 SS act 2 rings
-	sub.w	(SS2p_RingBuffer+6).w,d1	; P2 SS act 2 rings
-	bsr.w	sub_8652
-	move.w	#$630,d2
-	moveq	#0,d1
-	move.w	(SS2p_RingBuffer+8).w,d1	; P1 SS act 3 rings
-	sub.w	(SS2p_RingBuffer+$A).w,d1	; P2 SS act 3 rings
-	bsr.w	sub_8652
-	move.w	(a4),(SS_Total_Won).w
-	rts
-; ===========================================================================
-; loc_8452:
-Setup2PResults_SpecialZone:
-	bsr.w	sub_84A4
-	lea	(SS_Total_Won).w,a4
-	clr.w	(a4)
-	move.w	#$4D4,d6
-	bsr.w	sub_85CE
-	move.w	#$574,d6
-	bsr.w	sub_85CE
-	move.w	#$614,d6
-	bsr.w	sub_85CE
-	rts
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_8476:
-	lea	(EHZ_Results_2P).w,a4
-	move.b	(Current_Zone_2P).w,d0
-	beq.s	+
-	lea	(MCZ_Results_2P).w,a4
-	subq.b	#1,d0
-	beq.s	+
-	lea	(CNZ_Results_2P).w,a4
-	subq.b	#1,d0
-	beq.s	+
-	lea	(SS_Results_2P).w,a4
-+
-	moveq	#0,d0
-	move.b	(Current_Act_2P).w,d0
-	add.w	d0,d0
-	lea	(a4,d0.w),a4
-	clr.w	(a4)
-	rts
-; End of function sub_8476
-
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_84A4:
-	lea	(EHZ_Results_2P).w,a5
-	move.b	(Current_Zone_2P).w,d0
-	beq.s	+	; rts
-	lea	(MCZ_Results_2P).w,a5
-	subq.b	#1,d0
-	beq.s	+	; rts
-	lea	(CNZ_Results_2P).w,a5
-	subq.b	#1,d0
-	beq.s	+	; rts
-	lea	(SS_Results_2P).w,a5
-+
-	rts
-; End of function sub_84A4
-
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_84C4:
-	move.w	(a5),d0
-	bmi.s	+
-	move.w	d6,d2
-	moveq	#0,d0
-	moveq	#0,d1
-	move.b	(a5),d1
-	bsr.w	sub_86B0
-	addq.w	#8,d6
-	move.w	d6,d2
-	moveq	#0,d1
-	move.b	1(a5),d1
-	bsr.w	sub_86B0
-	addi.w	#$12,d6
-	move.w	d6,d2
-	move.w	#$6000,d0
-	moveq	#0,d1
-	move.b	(a5),d1
-	sub.b	1(a5),d1
-	bsr.w	sub_8652
-	addq.w	#2,a5
-	rts
-; ===========================================================================
-+
-	addq.w	#4,d6
-	not.w	d0
-	bne.s	+
-	lea	(Text2P_NoGame).l,a1
-	move.w	d6,d2
-	bsr.w	loc_8698
-	addi.w	#$16,d6
-	move.w	d6,d2
-	lea	(Text2P_Blank).l,a1
-	bsr.w	loc_8698
-	addq.w	#2,a5
-	rts
-; ===========================================================================
-+
-	moveq	#0,d0
-	lea	(Text2P_GameOver).l,a1
-	move.w	d6,d2
-	bsr.w	loc_8698
-	addi.w	#$16,d6
-	move.w	d6,d2
-	move.w	#$6000,d0
-	moveq	#0,d1
-	move.b	(a5),d1
-	sub.b	1(a5),d1
-	bsr.w	sub_8652
-	addq.w	#2,a5
-	rts
-; End of function sub_84C4
-
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_854A:
-	move.w	(a5),d0
-	bmi.s	loc_8582
-	move.w	d6,d2
-	moveq	#0,d0
-	moveq	#0,d1
-	move.b	(a5),d1
-	bsr.w	sub_86B0
-	addq.w	#8,d6
-	move.w	d6,d2
-	moveq	#0,d1
-	move.b	1(a5),d1
-	bsr.w	sub_86B0
-	addi.w	#$C,d6
-	move.w	d6,d2
-	move.w	#$6000,d0
-	moveq	#0,d1
-	move.b	(a5),d1
-	sub.b	1(a5),d1
-	bsr.w	sub_8652
-	addq.w	#2,a5
-	rts
-; ===========================================================================
-
-loc_8582:
-	not.w	d0
-	bne.s	loc_85A6
-	lea	(Text2P_NoGame).l,a1
-	move.w	d6,d2
-	bsr.w	loc_8698
-	addi.w	#$14,d6
-	move.w	d6,d2
-	lea	(Text2P_Blank).l,a1
-	bsr.w	loc_8698
-	addq.w	#2,a5
-	rts
-; ===========================================================================
-
-loc_85A6:
-	moveq	#0,d0
-	lea	(Text2P_GameOver).l,a1
-	move.w	d6,d2
-	bsr.w	loc_8698
-	addi.w	#$14,d6
-	move.w	d6,d2
-	move.w	#$6000,d0
-	moveq	#0,d1
-	move.b	(a5),d1
-	sub.b	1(a5),d1
-	bsr.w	sub_8652
-	addq.w	#2,a5
-	rts
-; End of function sub_854A
-
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_85CE:
-	move.w	(a5),d0
-	bmi.s	+
-	move.w	d6,d2
-	moveq	#0,d0
-	moveq	#0,d1
-	move.b	(a5),d1
-	bsr.w	sub_86B0
-	addi.w	#$C,d6
-	move.w	d6,d2
-	moveq	#0,d1
-	move.b	1(a5),d1
-	bsr.w	sub_86B0
-	addi.w	#$10,d6
-	move.w	d6,d2
-	move.w	#$6000,d0
-	moveq	#0,d1
-	move.b	(a5),d1
-	sub.b	1(a5),d1
-	bsr.w	sub_8652
-	addq.w	#2,a5
-	rts
-; ===========================================================================
-+
-	not.w	d0
-	bne.s	loc_862C
-	lea	(Text2P_NoGame).l,a1
-	move.w	d6,d2
-	addq.w	#4,d2
-	bsr.w	loc_8698
-	addi.w	#$14,d6
-	move.w	d6,d2
-	lea	(Text2P_Blank).l,a1
-	bsr.s	loc_8698
-	addq.w	#2,a5
-	rts
-; ===========================================================================
-
-loc_862C:
-	moveq	#0,d0
-	lea	(Text2P_GameOver).l,a1
-	move.w	d6,d2
-	bsr.s	loc_8698
-	addi.w	#$14,d6
-	move.w	d6,d2
-	move.w	#$6000,d0
-	moveq	#0,d1
-	move.b	(a5),d1
-	sub.b	1(a5),d1
-	bsr.w	sub_8652
-	addq.w	#2,a5
-	rts
-; End of function sub_85CE
-
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_8652:
-	lea	(Text2P_Tied).l,a1
-	beq.s	++
-	bcs.s	+
-	lea	(Text2P_1P).l,a1
-	addq.b	#1,(a4)
-	bra.s	++
-; ===========================================================================
-+
-	lea	(Text2P_2P).l,a1
-	addq.b	#1,1(a4)
-+
-	bra.s	loc_8698
-; End of function sub_8652
-
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_8672:
-	lea	(Text2P_EmeraldHill).l,a1
-	move.b	(Current_Zone_2P).w,d1
-	beq.s	loc_8698
-	lea	(Text2P_MysticCave).l,a1
-	subq.b	#1,d1
-	beq.s	loc_8698
-	lea	(Text2P_CasinoNight).l,a1
-	subq.b	#1,d1
-	beq.s	loc_8698
-	lea	(Text2P_SpecialStage).l,a1
-
-loc_8698:
-	lea	(Chunk_Table).l,a2
-	lea	(a2,d2.w),a2
-	moveq	#0,d1
-
-	move.b	(a1)+,d1
--	move.b	(a1)+,d0
-	move.w	d0,(a2)+
-	dbf	d1,-
-
-	rts
-; End of function sub_8672
-
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_86B0:
-	lea	(Chunk_Table).l,a2
-	lea	(a2,d2.w),a2
-	lea	(word_86F0).l,a3
-	moveq	#0,d2
-
-	moveq	#2,d5
--	moveq	#0,d3
-	move.w	(a3)+,d4
-
--	sub.w	d4,d1
-	bcs.s	+
-	addq.w	#1,d3
-	bra.s	-
-; ---------------------------------------------------------------------------
-+
-	add.w	d4,d1
-	tst.w	d5
-	beq.s	++
-	tst.w	d3
-	beq.s	+
-	moveq	#1,d2
-+
-	tst.w	d2
-	beq.s	++
-+
-	addi.b	#$10,d3
-	move.b	d3,d0
-	move.w	d0,(a2)
-+
-	addq.w	#2,a2
-	dbf	d5,--
-
-	rts
-; End of function sub_86B0
-
-; ===========================================================================
-word_86F0:
-	dc.w   100
-	dc.w	10	; 1
-	dc.w	 1	; 2
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_86F6:
-	lea	(Chunk_Table).l,a2
-	lea	(a2,d2.w),a2
-	lea	(dword_8732).l,a3
-	moveq	#0,d2
-
-	moveq	#5,d5
--	moveq	#0,d3
-	move.l	(a3)+,d4
-
--	sub.l	d4,d1
-	bcs.s	+
-	addq.w	#1,d3
-	bra.s	-
-; ===========================================================================
-+
-	add.l	d4,d1
-	tst.w	d3
-	beq.s	+
-	moveq	#1,d2
-+
-	tst.w	d2
-	beq.s	+
-	addi.b	#$10,d3
-	move.b	d3,d0
-	move.w	d0,(a2)
-+
-	addq.w	#2,a2
-	dbf	d5,--
-
-	rts
-; End of function sub_86F6
-
-; ===========================================================================
-dword_8732:
-	dc.l 100000
-	dc.l  10000
-	dc.l   1000
-	dc.l    100
-	dc.l     10
-	dc.l      1
-
-	; set the character set for menu text
-	charset '@',"\27\30\31\32\33\34\35\36\37\38\39\40\41\42\43\44\45\46\47\48\49\50\51\52\53\54\55"
-	charset '0',"\16\17\18\19\20\21\22\23\24\25"
-	charset '*',$1A
-	charset ':',$1C
-	charset '.',$1D
-	charset ' ',0
-
-	; Menu text
-Text2P_EmeraldHill:	menutxt	"EMERALD HILL"	; byte_874A:
-Text2P_MysticCave:	menutxt	" MYSTIC CAVE"	; byte_8757:
-Text2P_CasinoNight:	menutxt	"CASINO NIGHT"	; byte_8764:
-Text2P_SpecialStage:	menutxt	"SPECIAL STAGE"	; byte_8771:
-Text2P_Special:		menutxt	"   SPECIAL  "	; byte_877F:
-Text2P_Zone:		menutxt	"ZONE "		; byte_878C:
-Text2P_Stage:		menutxt	"STAGE"		; byte_8792:
-Text2P_GameOver:	menutxt	"GAME OVER"	; byte_8798:
-Text2P_TimeOver:	menutxt	"TIME OVER"
-Text2P_NoGame:		menutxt	"NO GAME"	; byte_87AC:
-Text2P_Tied:		menutxt	"TIED"		; byte_87B4:
-Text2P_1P:		menutxt	" 1P"		; byte_87B9:
-Text2P_2P:		menutxt	" 2P"		; byte_87BD:
-Text2P_Blank:		menutxt	"    "		; byte_87C1:
-
-	charset ; reset character set
-
-; ------------------------------------------------------------------------
-; MENU ANIMATION SCRIPT
-; ------------------------------------------------------------------------
-;word_87C6:
-Anim_SonicMilesBG:	zoneanimstart
-	; Sonic/Miles animated background
-	zoneanimdecl  -1, ArtUnc_MenuBack,    1,  6, $A
-	dc.b   0,$C7
-	dc.b  $A,  5
-	dc.b $14,  5
-	dc.b $1E,$C7
-	dc.b $14,  5
-	dc.b  $A,  5
-	even
-
-	zoneanimend
-
-; off_87DC:
-TwoPlayerResultsPointers:
-VsResultsScreen_Act:	dc.l Map_2PActResults, Setup2PResults_Act
-VsResultsScreen_Zone:	dc.l Map_2PZoneResults, Setup2PResults_Zone
-VsResultsScreen_Game:	dc.l Map_2PGameResults, Setup2PResults_Game
-VsResultsScreen_SS:	dc.l Map_2PSpecialStageActResults, Setup2PResults_SpecialAct
-VsResultsScreen_SSZone:	dc.l Map_2PSpecialStageZoneResults, Setup2PResults_SpecialZone
-
-; 2P single act results screen (enigma compressed)
-; byte_8804:
-Map_2PActResults:	BINCLUDE "mappings/misc/2P Act Results.eni"
-
-; 2P zone results screen (enigma compressed)
-; byte_88CE:
-Map_2PZoneResults:	BINCLUDE "mappings/misc/2P Zone Results.eni"
-
-; 2P game results screen (after all 4 zones) (enigma compressed)
-; byte_8960:
-Map_2PGameResults:	BINCLUDE "mappings/misc/2P Game Results.eni"
-
-; 2P special stage act results screen (enigma compressed)
-; byte_8AA4:
-Map_2PSpecialStageActResults:	BINCLUDE "mappings/misc/2P Special Stage Act Results.eni"
-
-; 2P special stage zone results screen (enigma compressed)
-; byte_8B30:
-Map_2PSpecialStageZoneResults:	BINCLUDE "mappings/misc/2P Special Stage Zone Results.eni"
-
-	even
-
-	jmpTos JmpTo2_Adjust2PArtPointer,JmpTo_Dynamic_Normal
-
 
 
 
@@ -11549,275 +10535,6 @@ MenuScreen:
 
 	cmpi.b	#GameModeID_LevelSelect,(Game_Mode).w	; level select menu?
 	beq.w	MenuScreen_LevelSelect	; if yes, branch
-
-;MenuScreen_LevSel2P:
-	lea	(Chunk_Table).l,a1
-	lea	(MapEng_LevSel2P).l,a0
-	move.w	#make_art_tile(ArtTile_ArtNem_MenuBox,0,0),d0
-	bsr.w	EniDec
-	lea	(Chunk_Table+$198).l,a1
-	lea	(MapEng_LevSel2P).l,a0
-	move.w	#make_art_tile(ArtTile_ArtNem_MenuBox,1,0),d0
-	bsr.w	EniDec
-	lea	(Chunk_Table+$330).l,a1
-	lea	(MapEng_LevSelIcon).l,a0
-	move.w	#make_art_tile(ArtTile_ArtNem_LevelSelectPics,0,0),d0
-	bsr.w	EniDec
-	lea	(Chunk_Table+$498).l,a2
-
-	moveq	#bytesToWcnt(tiles_to_bytes(1)),d1
--	move.w	#make_art_tile(ArtTile_ArtNem_MenuBox+11,1,0),(a2)+
-	dbf	d1,-
-
-	bsr.w	Update2PLevSelSelection
-	addq.b	#1,(Current_Zone_2P).w
-	andi.b	#3,(Current_Zone_2P).w
-	bsr.w	ClearOld2PLevSelSelection
-	addq.b	#1,(Current_Zone_2P).w
-	andi.b	#3,(Current_Zone_2P).w
-	bsr.w	ClearOld2PLevSelSelection
-	addq.b	#1,(Current_Zone_2P).w
-	andi.b	#3,(Current_Zone_2P).w
-	bsr.w	ClearOld2PLevSelSelection
-	addq.b	#1,(Current_Zone_2P).w
-	andi.b	#3,(Current_Zone_2P).w
-	clr.w	(Player_mode).w
-	clr.b	(Current_Act_2P).w
-	clr.w	(Results_Screen_2P).w	; VsRSID_Act
-	clr.b	(Level_started_flag).w
-	clr.w	(Anim_Counters).w
-	clr.w	(Game_Over_2P).w
-	lea	(Anim_SonicMilesBG).l,a2
-	jsrto	JmpTo2_Dynamic_Normal
-	moveq	#PalID_Menu,d0
-	bsr.w	PalLoad_ForFade
-	lea	(Normal_palette_line3).w,a1
-	lea	(Target_palette_line3).w,a2
-
-	moveq	#bytesToLcnt(tiles_to_bytes(1)),d1
--	move.l	(a1),(a2)+
-	clr.l	(a1)+
-	dbf	d1,-
-
-	move.b	#MusID_Options,d0
-	jsrto	JmpTo_PlayMusic
-	move.w	#(30*60)-1,(Demo_Time_left).w	; 30 seconds
-	clr.w	(Two_player_mode).w
-	clr.l	(Camera_X_pos).w
-	clr.l	(Camera_Y_pos).w
-	move.b	#VintID_Menu,(Vint_routine).w
-	bsr.w	WaitForVint
-	move.w	(VDP_Reg1_val).w,d0
-	ori.b	#$40,d0
-	move.w	d0,(VDP_control_port).l
-	bsr.w	Pal_FadeFromBlack
-
-;loc_8DA8:
-LevelSelect2P_Main:
-	move.b	#VintID_Menu,(Vint_routine).w
-	bsr.w	WaitForVint
-	move	#$2700,sr
-	bsr.w	ClearOld2PLevSelSelection
-	bsr.w	LevelSelect2P_Controls
-	bsr.w	Update2PLevSelSelection
-	move	#$2300,sr
-	lea	(Anim_SonicMilesBG).l,a2
-	jsrto	JmpTo2_Dynamic_Normal
-	move.b	(Ctrl_1_Press).w,d0
-	or.b	(Ctrl_2_Press).w,d0
-	andi.b	#button_start_mask,d0
-	bne.s	LevelSelect2P_PressStart
-	bra.w	LevelSelect2P_Main
-; ===========================================================================
-;loc_8DE2:
-LevelSelect2P_PressStart:
-	bsr.w	Chk2PZoneCompletion
-	bmi.s	loc_8DF4
-	move.w	#SndID_Error,d0
-	jsrto	JmpTo_PlaySound
-	bra.w	LevelSelect2P_Main
-; ===========================================================================
-
-loc_8DF4:
-	moveq	#0,d0
-	move.b	(Current_Zone_2P).w,d0
-	add.w	d0,d0
-	move.w	LevelSelect2P_LevelOrder(pc,d0.w),d0
-	bmi.s	loc_8E3A
-	move.w	d0,(Current_ZoneAndAct).w
-	move.w	#1,(Two_player_mode).w
-	move.b	#GameModeID_Level,(Game_Mode).w ; => Level (Zone play mode)
-	move.b	#0,(Last_star_pole_hit).w
-	move.b	#0,(Last_star_pole_hit_2P).w
-	moveq	#0,d0
-	move.l	d0,(Score).w
-	move.l	d0,(Score_2P).w
-	move.l	#5000,(Next_Extra_life_score).w
-	move.l	#5000,(Next_Extra_life_score_2P).w
-	rts
-; ===========================================================================
-
-loc_8E3A:
-	move.b	#4,(Current_Special_Stage).w
-	move.b	#GameModeID_SpecialStage,(Game_Mode).w ; => SpecialStage
-	moveq	#1,d0
-	move.w	d0,(Two_player_mode).w
-	move.w	d0,(Two_player_mode_copy).w
-	rts
-; ===========================================================================
-; word_8E52:
-LevelSelect2P_LevelOrder:
-	dc.w	emerald_hill_zone_act_1
-	dc.w	mystic_cave_zone_act_1
-	dc.w	casino_night_zone_act_1
-	dc.w	$FFFF
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-;sub_8E5A:
-LevelSelect2P_Controls:
-	move.b	(Ctrl_1_Press).w,d0
-	or.b	(Ctrl_2_Press).w,d0
-	move.b	d0,d1
-	andi.b	#button_up_mask|button_down_mask,d0
-	beq.s	+
-	bchg	#1,(Current_Zone_2P).w
-
-+
-	andi.b	#button_left_mask|button_right_mask,d1
-	beq.s	+	; rts
-	bchg	#0,(Current_Zone_2P).w
-+
-	rts
-; End of function LevelSelect2P_Controls
-
-; ---------------------------------------------------------------------------
-; Subroutine to update the 2P level select selection graphically
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-; sub_8E7E:
-Update2PLevSelSelection:
-	moveq	#0,d0
-	move.b	(Current_Zone_2P).w,d0
-	lsl.w	#4,d0	; 16 bytes per entry
-	lea	(LevSel2PIconData).l,a3
-	lea	(a3,d0.w),a3
-	move.w	#palette_line_3,d0	; highlight text
-	lea	(Chunk_Table+$48).l,a2
-	movea.l	(a3)+,a1
-	bsr.w	MenuScreenTextToRAM
-	lea	(Chunk_Table+$94).l,a2
-	movea.l	(a3)+,a1
-	bsr.w	MenuScreenTextToRAM
-	lea	(Chunk_Table+$D8).l,a2
-	movea.l	4(a3),a1
-	bsr.w	Chk2PZoneCompletion	; has the zone been completed?
-	bmi.s	+	; if not, branch
-	lea	(Chunk_Table+$468).l,a1	; display large X instead of icon
-+
-	moveq	#2,d1
--	move.l	(a1)+,(a2)+
-	move.l	(a1)+,(a2)+
-	lea	$1A(a2),a2
-	dbf	d1,-
-
-	lea	(Chunk_Table).l,a1
-	move.l	(a3)+,d0
-	moveq	#17-1,d1
-	moveq	#12-1,d2
-	jsrto	JmpTo_PlaneMapToVRAM_H40
-	lea	(Pal_LevelIcons).l,a1
-	moveq	#0,d0
-	move.b	(a3),d0
-	lsl.w	#5,d0
-	lea	(a1,d0.w),a1
-	lea	(Normal_palette_line3).w,a2
-
-	moveq	#bytesToLcnt(palette_line_size),d1
--	move.l	(a1)+,(a2)+
-	dbf	d1,-
-
-	rts
-; End of function Update2PLevSelSelection
-
-; ---------------------------------------------------------------------------
-; Subroutine to check if a 2P zone has been completed
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-; sub_8EFE:
-Chk2PZoneCompletion:
-	moveq	#0,d0
-	move.b	(Current_Zone_2P).w,d0
-	; multiply d0 by 6
-	move.w	d0,d1
-	add.w	d0,d0
-	add.w	d1,d0
-	add.w	d0,d0
-	lea	(Results_Data_2P).w,a5
-	lea	(a5,d0.w),a5
-	move.w	(a5),d0
-	add.w	2(a5),d0
-	rts
-; End of function Chk2PZoneCompletion
-
-; ---------------------------------------------------------------------------
-; Subroutine to clear the old 2P level select selection
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-; sub_8F1C:
-ClearOld2PLevSelSelection:
-	moveq	#0,d0
-	move.b	(Current_Zone_2P).w,d0
-	lsl.w	#4,d0
-	lea	(LevSel2PIconData).l,a3
-	lea	(a3,d0.w),a3
-	moveq	#palette_line_0,d0
-	lea	(Chunk_Table+$1E0).l,a2
-	movea.l	(a3)+,a1
-	bsr.w	MenuScreenTextToRAM
-	lea	(Chunk_Table+$22C).l,a2
-	movea.l	(a3)+,a1
-	bsr.w	MenuScreenTextToRAM
-	lea	(Chunk_Table+$270).l,a2
-	lea	(Chunk_Table+$498).l,a1
-	bsr.w	Chk2PZoneCompletion
-	bmi.s	+
-	lea	(Chunk_Table+$468).l,a1
-+
-	moveq	#2,d1
--	move.l	(a1)+,(a2)+
-	move.l	(a1)+,(a2)+
-	lea	$1A(a2),a2
-	dbf	d1,-
-
-	lea	(Chunk_Table+$198).l,a1
-	move.l	(a3)+,d0
-	moveq	#17-1,d1
-	moveq	#12-1,d2
-	jmpto	JmpTo_PlaneMapToVRAM_H40
-; End of function ClearOld2PLevSelSelection
-
-; ===========================================================================
-; off_8F7E:
-LevSel2PIconData:
-
-; macro to declare icon data for a 2P level select icon
-iconData macro txtlabel,txtlabel2,vramAddr,iconPal,iconAddr
-	dc.l txtlabel, txtlabel2	; text locations
-	dc.l vdpComm(vramAddr,VRAM,WRITE)	; VRAM location to place data
-	dc.l iconPal<<24|((iconAddr)&$FFFFFF)	; icon palette and plane data location
-    endm
-
-	iconData	Text2P_EmeraldHill,Text2P_Zone, VRAM_Plane_A_Name_Table+planeLoc(64,2,2),   0,Chunk_Table+$330
-	iconData	Text2P_MysticCave, Text2P_Zone, VRAM_Plane_A_Name_Table+planeLoc(64,22,2),  5,Chunk_Table+$3A8
-	iconData	Text2P_CasinoNight,Text2P_Zone, VRAM_Plane_A_Name_Table+planeLoc(64,2,15),  6,Chunk_Table+$3C0
-	iconData	Text2P_Special,    Text2P_Stage,VRAM_Plane_A_Name_Table+planeLoc(64,22,15),12,Chunk_Table+$450
 
 ; ---------------------------------------------------------------------------
 ; Common menu screen subroutine for transferring text to RAM
@@ -12759,11 +11476,6 @@ TextOptScr_0:			menutxt	"      00       "	; byte_9870:
 ; level select picture palettes
 ; byte_9880:
 Pal_LevelIcons:	BINCLUDE "art/palettes/Level Select Icons.bin"
-
-; 2-player level select screen mappings (Enigma compressed)
-; byte_9A60:
-	even
-MapEng_LevSel2P:	BINCLUDE "mappings/misc/Level Select 2P.eni"
 
 ; options screen mappings (Enigma compressed)
 ; byte_9AB2:
@@ -14938,28 +13650,6 @@ DeformBgLayer:
 	bsr.w	SetVertiScrollFlags
 
 DeformBgLayerAfterScrollVert:
-	tst.w	(Two_player_mode).w
-	beq.s	loc_C4D0
-	tst.b	(Scroll_lock_P2).w
-	bne.s	loc_C4D0
-	lea	(Sidekick).w,a0 ; a0=character
-	lea	(Camera_X_pos_P2).w,a1
-	lea	(Camera_Boundaries_P2).w,a2
-	lea	(Scroll_flags_P2).w,a3
-	lea	(Camera_X_pos_diff_P2).w,a4
-	lea	(Camera_Delay_P2).w,a5
-	lea	(Tails_Pos_Record_Buf).w,a6
-	bsr.w	ScrollHoriz
-	lea	(Horiz_block_crossed_flag_P2).w,a2
-	bsr.w	SetHorizScrollFlags
-	lea	(Camera_Y_pos_P2).w,a1
-	lea	(Camera_Boundaries_P2).w,a2
-	lea	(Camera_Y_pos_diff_P2).w,a4
-	move.w	(Camera_Y_pos_bias_P2).w,d3
-	bsr.w	ScrollVerti
-	lea	(Verti_block_crossed_flag_P2).w,a2
-	bsr.w	SetVertiScrollFlags
-
 loc_C4D0:
 	bsr.w	RunDynamicLevelEvents
 	move.w	(Camera_Y_pos).w,(Vscroll_Factor_FG).w
@@ -15060,10 +13750,6 @@ SwScrl_Title:
 ; ===========================================================================
 ; loc_C57E:
 SwScrl_EHZ:
-	; Use different background scrolling code for two player mode.
-	tst.w	(Two_player_mode).w
-	bne.w	SwScrl_EHZ_2P
-
 	; Update the background's vertical scrolling.
 	move.w	(Camera_BG_Y_pos).w,(Vscroll_Factor_BG).w
 
@@ -15211,143 +13897,6 @@ SwScrl_RippleData:
 	dc.b   2,  0,  3,  2,  2,  3,  2,  2,  1,  3,  0,  0,  1,  0,  1,  3; 64
 	dc.b   1,  2	; 66
 	even
-; ===========================================================================
-; loc_C6C4:
-SwScrl_EHZ_2P:
-	; Make the 'ripple' animate every 8 frames.
-	move.b	(Vint_runcount+3).w,d1
-	andi.w	#7,d1
-	bne.s	+
-	subq.w	#1,(TempArray_LayerDef).w
-+
-	; Do Player 1's screen.
-
-	; Update the background's vertical scrolling.
-	move.w	(Camera_BG_Y_pos).w,(Vscroll_Factor_BG).w
-
-	; Only allow the screen to vertically scroll two pixels at a time.
-	andi.l	#$FFFEFFFE,(Vscroll_Factor).w
-
-	; Update the background's (and foreground's) horizontal scrolling.
-	; This creates an elaborate parallax effect.
-	lea	(Horiz_Scroll_Buf).w,a1
-	move.w	(Camera_X_pos).w,d0
-	; Do 11 lines.
-	move.w	#11-1,d1
-	bsr.s	.doBackground
-
-	; Do Player 2's screen.
-
-	; Update the background's vertical scrolling.
-	moveq	#0,d0
-	move.w	d0,(Vscroll_Factor_P2_BG).w
-	subi.w	#screen_height,(Vscroll_Factor_P2_BG).w
-
-	; Update the foregrounds's vertical scrolling.
-	move.w	(Camera_Y_pos_P2).w,(Vscroll_Factor_P2_FG).w
-	subi.w	#screen_height,(Vscroll_Factor_P2_FG).w
-
-	; Only allow the screen to vertically scroll two pixels at a time.
-	andi.l	#$FFFEFFFE,(Vscroll_Factor_P2).w
-
-	; Update the background's (and foreground's) horizontal scrolling.
-	; This creates an elaborate parallax effect.
-	; Tails' screen is slightly taller, to fill the gap between the two
-	; screens.
-	lea	(Horiz_Scroll_Buf+(screen_height/2-4)*2*2).w,a1
-	move.w	(Camera_X_pos_P2).w,d0
-	; Do 11+4 lines.
-	move.w	#11+4-1,d1
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-; sub_C71A:
-.doBackground:
-	neg.w	d0
-	move.w	d0,d2
-	swap	d0
-	move.w	#0,d0
-
--	move.l	d0,(a1)+
-	dbf	d1,-
-
-	move.w	d2,d0
-	asr.w	#6,d0
-
-	; Do 29 lines.
-	move.w	#29-1,d1
--	move.l	d0,(a1)+
-	dbf	d1,-
-
-	move.w	d0,d3
-	move.w	(TempArray_LayerDef).w,d1
-	andi.w	#$1F,d1
-	lea_	SwScrl_RippleData,a2
-	lea	(a2,d1.w),a2
-
-	; Do 11 lines.
-	move.w	#11-1,d1
--	move.b	(a2)+,d0
-	ext.w	d0
-	add.w	d3,d0
-	move.l	d0,(a1)+
-	dbf	d1,-
-
-	move.w	#0,d0
-
-	; Do 5 lines.
-	move.w	#5-1,d1
--	move.l	d0,(a1)+
-	dbf	d1,-
-
-	move.w	d2,d0
-	asr.w	#4,d0
-
-	; Do 8 lines.
-	move.w	#8-1,d1
--	move.l	d0,(a1)+
-	dbf	d1,-
-
-	move.w	d2,d0
-	asr.w	#4,d0
-	move.w	d0,d1
-	asr.w	#1,d1
-	add.w	d1,d0
-
-	; Do 8 lines.
-	move.w	#8-1,d1
--	move.l	d0,(a1)+
-	dbf	d1,-
-
-	move.w	d2,d0
-	asr.w	#1,d0
-	move.w	d2,d1
-	asr.w	#3,d1
-	sub.w	d1,d0
-	ext.l	d0
-	asl.l	#8,d0
-	divs.w	#$30,d0
-	ext.l	d0
-	asl.l	#8,d0
-	moveq	#0,d3
-	move.w	d2,d3
-	asr.w	#3,d3
-
-	; Do 40 lines.
-	move.w	#40-1,d1
--	move.w	d2,(a1)+
-	move.w	d3,(a1)+
-	swap	d3
-	add.l	d0,d3
-	swap	d3
-	dbf	d1,-
-
-	; 11+29+11+5+8+8+40=112.
-	; No missing lines here.
-
-	rts
-; End of function sub_C71A
-
 ; ===========================================================================
 ; unused...
 ; loc_C7BA: SwScrl_Lev2:
@@ -15598,11 +14147,6 @@ SwScrl_WFZ_Normal_Array:
 ; ===========================================================================
 ; loc_C964:
 SwScrl_HTZ:
-	; Use different background scrolling code for two player mode...
-	; despite the fact that Hill Top Zone is not normally playable in
-	; two-player mode.
-	tst.w	(Two_player_mode).w
-	bne.w	SwScrl_HTZ_2P
 
 	tst.b	(Screen_Shaking_Flag_HTZ).w
 	bne.w	HTZ_Screen_Shake
@@ -15842,80 +14386,6 @@ HTZ_Screen_Shake:
 	swap	d0
 	move.w	(Camera_BG_X_pos).w,d0
 	add.w	d2,d0
-	neg.w	d0
-
--	move.l	d0,(a1)+
-	dbf	d1,-
-
-	rts
-; ===========================================================================
-; Unused background code for Hill Top Zone in two player mode!
-; Unfortunately, it doesn't do anything very interesting: it's just a basic,
-; flat background with no parallax effect.
-; loc_CB10:
-SwScrl_HTZ_2P:
-	; Set the flags to dynamically load the background as it moves.
-	move.w	(Camera_X_pos_diff).w,d4
-	ext.l	d4
-	asl.l	#6,d4
-	move.w	(Camera_Y_pos_diff).w,d5
-	ext.l	d5
-	asl.l	#2,d5
-	moveq	#0,d5
-	bsr.w	SetHorizVertiScrollFlagsBG
-
-	; ...But then immediately wipe them. Strange.
-	; I guess the only reason 'SetHorizVertiScrollFlagsBG' is called is
-	; so that 'Camera_BG_X_pos' and 'Camera_BG_Y_pos' are updated?
-	move.b	#0,(Scroll_flags_BG).w
-
-	; Update the background's vertical scrolling.
-	move.w	(Camera_BG_Y_pos).w,(Vscroll_Factor_BG).w
-
-	; Only allow the screen to vertically scroll two pixels at a time.
-	andi.l	#$FFFEFFFE,(Vscroll_Factor).w
-
-	; Update the background's (and foreground's) horizontal scrolling.
-	; This is very basic: there is no parallax effect here.
-	lea	(Horiz_Scroll_Buf).w,a1
-	move.w	#112-1,d1
-	move.w	(Camera_X_pos).w,d0
-	neg.w	d0
-	swap	d0
-	move.w	(Camera_BG_X_pos).w,d0
-	neg.w	d0
-
--	move.l	d0,(a1)+
-	dbf	d1,-
-
-	; Update 'Camera_BG_X_pos_P2'.
-	move.w	(Camera_X_pos_diff_P2).w,d4
-	ext.l	d4
-	asl.l	#6,d4
-	add.l	d4,(Camera_BG_X_pos_P2).w
-
-	; Update the background's vertical scrolling.
-	moveq	#0,d0
-	move.w	d0,(Vscroll_Factor_P2_BG).w
-	subi.w	#screen_height,(Vscroll_Factor_P2_BG).w
-
-	; Update the foreground's vertical scrolling.
-	move.w	(Camera_Y_pos_P2).w,(Vscroll_Factor_P2_FG).w
-	subi.w	#screen_height,(Vscroll_Factor_P2_FG).w
-
-	; Only allow the screen to vertically scroll two pixels at a time.
-	andi.l	#$FFFEFFFE,(Vscroll_Factor_P2).w
-
-	; Update the background's (and foreground's) horizontal scrolling.
-	; This is very basic: there is no parallax effect here.
-	; Tails' screen is slightly taller, to fill the gap between the two
-	; screens.
-	lea	(Horiz_Scroll_Buf+(112-4)*2*2).w,a1
-	move.w	#112+4-1,d1
-	move.w	(Camera_X_pos_P2).w,d0
-	neg.w	d0
-	swap	d0
-	move.w	(Camera_BG_X_pos_P2).w,d0
 	neg.w	d0
 
 -	move.l	d0,(a1)+
@@ -16230,10 +14700,6 @@ SwScrl_OOZ:
 ; ===========================================================================
 ; loc_CD2C:
 SwScrl_MCZ:
-	; Use different background scrolling code for two player mode.
-	tst.w	(Two_player_mode).w
-	bne.w	SwScrl_MCZ_2P
-
 	; Set the flags to dynamically load the background as it moves.
 	; Note that this is only done vertically: Mystic Cave Zone's
 	; background repeats horizontally, so dynamic horizontal loading is
@@ -16430,338 +14896,8 @@ SwScrl_MCZ_RowHeights:
 	dc.b 37	; 23
 	even
 ; ===========================================================================
-; loc_CE84:
-SwScrl_MCZ_2P:
-	; Note that the flags to dynamically load the background as it moves
-	; aren't set here. This is because the background is not dynamically
-	; loaded in two player mode: instead, the whole background is
-	; pre-loaded into Plane B. This is possible because Plane B is larger
-	; in two player mode (able to hold 512x512 pixels instead of 512x256).
-	moveq	#0,d0
-	move.w	(Camera_Y_pos).w,d0
-	; Curiously, the background moves vertically at different speeds
-	; depending on what the current act is.
-	tst.b	(Current_Act).w
-	bne.s	+
-	divu.w	#3,d0
-	subi.w	#320,d0
-	bra.s	++
-+
-	divu.w	#6,d0
-	subi.w	#16,d0
-+
-	; Update 'Camera_BG_Y_pos'.
-	move.w	d0,(Camera_BG_Y_pos).w
-
-	; Update the background's vertical scrolling.
-	move.w	d0,(Vscroll_Factor_BG).w
-
-	; Only allow the screen to vertically scroll two pixels at a time.
-	andi.l	#$FFFEFFFE,(Vscroll_Factor).w
-
-	; Populate a list of horizontal scroll values for each row.
-	; The background is broken up into multiple rows of arbitrary
-	; heights, with each row getting its own scroll value.
-	; This is used to create an elaborate parallax effect.
-	lea	(TempArray_LayerDef).w,a2
-	lea	15*2(a2),a3
-	move.w	(Camera_X_pos).w,d0
-
-	; A huuuuuuuuuuuuge chunk of duplicate code from 'SwScrl_MCZ'.
-	ext.l	d0
-	asl.l	#4,d0
-	divs.w	#10,d0
-	ext.l	d0
-	asl.l	#4,d0
-	asl.l	#8,d0
-	move.l	d0,d1
-	swap	d1
-
-	move.w	d1,(a3)+
-	move.w	d1,7*2(a2)
-
-	swap	d1
-	add.l	d0,d1
-	swap	d1
-	move.w	d1,(a3)+
-	move.w	d1,6*2(a2)
-
-	swap	d1
-	add.l	d0,d1
-	swap	d1
-	move.w	d1,(a3)+
-	move.w	d1,5*2(a2)
-
-	swap	d1
-	add.l	d0,d1
-	swap	d1
-	move.w	d1,(a3)+
-	move.w	d1,4*2(a2)
-
-	swap	d1
-	add.l	d0,d1
-	swap	d1
-	move.w	d1,(a3)+
-	move.w	d1,3*2(a2)
-	move.w	d1,8*2(a2)
-	move.w	d1,14*2(a2)
-
-	swap	d1
-	add.l	d0,d1
-	swap	d1
-	move.w	d1,(a3)+
-
-	swap	d1
-	add.l	d0,d1
-	swap	d1
-	move.w	d1,(a3)+
-	move.w	d1,2*2(a2)
-	move.w	d1,9*2(a2)
-	move.w	d1,13*2(a2)
-
-	swap	d1
-	add.l	d0,d1
-	swap	d1
-	move.w	d1,(a3)+
-	move.w	d1,1*2(a2)
-	move.w	d1,10*2(a2)
-	move.w	d1,12*2(a2)
-
-	swap	d1
-	add.l	d0,d1
-	swap	d1
-	move.w	d1,(a3)+
-	move.w	d1,0*2(a2)
-	move.w	d1,11*2(a2)
-	; Duplicate code end.
-
-	; Use the list of row scroll values and a list of row heights to fill
-	; 'Horiz_Scroll_Buf'.
-	lea	(SwScrl_MCZ2P_RowHeights).l,a3
-	lea	(TempArray_LayerDef).w,a2
-	lea	(Horiz_Scroll_Buf).w,a1
-	move.w	(Camera_BG_Y_pos).w,d1
-	lsr.w	#1,d1
-
-	moveq	#0,d0
-
-	; Find the first visible scrolling section
-.segmentLoop:
-	move.b	(a3)+,d0		; Number of lines in this segment
-	addq.w	#2,a2
-	sub.w	d0,d1			; Does this segment have any visible lines?
-	bcc.s	.segmentLoop		; Branch if not
-
-	neg.w	d1			; d1 = number of lines to draw in this segment
-	subq.w	#2,a2
-	move.w	#112-1,d2		; Number of rows in hscroll buffer
-	move.w	(Camera_X_pos).w,d0
-	neg.w	d0
-	swap	d0
-	move.w	(a2)+,d0		; Fetch scroll value for this row...
-	neg.w	d0			; ...and flip sign for VDP
-
-.rowLoop:
-	move.l	d0,(a1)+
-	subq.w	#1,d1			; Has the current segment finished?
-	bne.s	.nextRow		; Branch if not
-	move.b	(a3)+,d1		; Fetch a new line count
-	move.w	(a2)+,d0		; Fetch scroll value for this row...
-	neg.w	d0			; ...and flip sign for VDP
-
-.nextRow:
-	dbf	d2,.rowLoop
-
-	bra.s	+
-; ===========================================================================
-; byte_CF90:
-SwScrl_MCZ2P_RowHeights:
-	dc.b 19
-	dc.b 11	; 1
-	dc.b  9	; 2
-	dc.b  4	; 3
-	dc.b  3	; 4
-	dc.b  1	; 5
-	dc.b  1	; 6
-	dc.b 24	; 7
-	dc.b  6	; 8
-	dc.b 10	; 9
-	dc.b 16	; 10
-	dc.b 32	; 11
-	dc.b 16	; 12
-	dc.b 10	; 13
-	dc.b  6	; 14
-	dc.b 24	; 15
-	dc.b  1	; 16
-	dc.b  1	; 17
-	dc.b  3	; 18
-	dc.b  4	; 19
-	dc.b 16	; 20
-	dc.b  9	; 21
-	dc.b 11	; 22
-	dc.b 19	; 23
-	even
-; ===========================================================================
-+
-	; Note that the flags to dynamically load the background as it moves
-	; aren't set here. This is because the background is not dynamically
-	; loaded in two player mode: instead, the whole background is
-	; pre-loaded into Plane B. This is possible because Plane B is larger
-	; in two player mode (able to hold 512x512 pixels instead of 512x256).
-	moveq	#0,d0
-	move.w	(Camera_Y_pos_P2).w,d0
-	; Curiously, the background moves vertically at different speeds
-	; depending on what the current act is.
-	tst.b	(Current_Act).w
-	bne.s	+
-	divu.w	#3,d0
-	subi.w	#320,d0
-	bra.s	++
-+
-	divu.w	#6,d0
-	subi.w	#16,d0
-+
-	; Update 'Camera_BG_Y_pos_P2'.
-	move.w	d0,(Camera_BG_Y_pos_P2).w
-
-	; Update the background's vertical scrolling.
-	move.w	d0,(Vscroll_Factor_P2_BG).w
-	subi.w	#screen_height,(Vscroll_Factor_P2_BG).w
-
-	; Update the foreground's vertical scrolling.
-	move.w	(Camera_Y_pos_P2).w,(Vscroll_Factor_P2_FG).w
-	subi.w	#screen_height,(Vscroll_Factor_P2_FG).w
-
-	; Only allow the screen to vertically scroll two pixels at a time.
-	andi.l	#$FFFEFFFE,(Vscroll_Factor_P2).w
-
-	; Populate a list of horizontal scroll values for each row.
-	; The background is broken up into multiple rows of arbitrary
-	; heights, with each row getting its own scroll value.
-	; This is used to create an elaborate parallax effect.
-	lea	(TempArray_LayerDef).w,a2
-	lea	15*2(a2),a3
-	move.w	(Camera_X_pos_P2).w,d0
-
-	; A huuuuuuuuuuuuge chunk of duplicate code from 'SwScrl_MCZ'.
-	ext.l	d0
-	asl.l	#4,d0
-	divs.w	#10,d0
-	ext.l	d0
-	asl.l	#4,d0
-	asl.l	#8,d0
-	move.l	d0,d1
-	swap	d1
-
-	move.w	d1,(a3)+
-	move.w	d1,7*2(a2)
-
-	swap	d1
-	add.l	d0,d1
-	swap	d1
-	move.w	d1,(a3)+
-	move.w	d1,6*2(a2)
-
-	swap	d1
-	add.l	d0,d1
-	swap	d1
-	move.w	d1,(a3)+
-	move.w	d1,5*2(a2)
-
-	swap	d1
-	add.l	d0,d1
-	swap	d1
-	move.w	d1,(a3)+
-	move.w	d1,4*2(a2)
-
-	swap	d1
-	add.l	d0,d1
-	swap	d1
-	move.w	d1,(a3)+
-	move.w	d1,3*2(a2)
-	move.w	d1,8*2(a2)
-	move.w	d1,14*2(a2)
-
-	swap	d1
-	add.l	d0,d1
-	swap	d1
-	move.w	d1,(a3)+
-
-	swap	d1
-	add.l	d0,d1
-	swap	d1
-	move.w	d1,(a3)+
-	move.w	d1,2*2(a2)
-	move.w	d1,9*2(a2)
-	move.w	d1,13*2(a2)
-
-	swap	d1
-	add.l	d0,d1
-	swap	d1
-	move.w	d1,(a3)+
-	move.w	d1,1*2(a2)
-	move.w	d1,10*2(a2)
-	move.w	d1,12*2(a2)
-
-	swap	d1
-	add.l	d0,d1
-	swap	d1
-	move.w	d1,(a3)+
-	move.w	d1,0*2(a2)
-	move.w	d1,11*2(a2)
-	; Duplicate code end.
-
-	; Use the list of row scroll values and a list of row heights to fill
-	; 'Horiz_Scroll_Buf'.
-	; Tails' screen is slightly taller, to fill the gap between the two
-	; screens.
-	lea_	SwScrl_MCZ2P_RowHeights+1,a3
-	lea	(TempArray_LayerDef).w,a2
-	lea	(Horiz_Scroll_Buf+(112-4)*2*2).w,a1
-	move.w	(Camera_BG_Y_pos_P2).w,d1
-	lsr.w	#1,d1
-	; Extend the first segment of 'SwScrl_MCZ2P_RowHeights' by 4 lines.
-	moveq	#19+4,d0
-	bra.s	.useOwnSegmentSize
-; ===========================================================================
-
-.segmentLoop:
-	; Find the first visible scrolling section
-	move.b	(a3)+,d0		; Number of lines in this segment
-
-.useOwnSegmentSize:
-	addq.w	#2,a2
-	sub.w	d0,d1			; Does this segment have any visible lines?
-	bcc.s	.segmentLoop		; Branch if not
-
-	neg.w	d1			; d1 = number of lines to draw in this segment
-	subq.w	#2,a2
-	move.w	#112+4-1,d2		; Number of rows in hscroll buffer
-	move.w	(Camera_X_pos_P2).w,d0
-	neg.w	d0
-	swap	d0
-	move.w	(a2)+,d0		; Fetch scroll value for this row...
-	neg.w	d0			; ...and flip sign for VDP
-
-.rowLoop:
-	move.l	d0,(a1)+
-	subq.w	#1,d1			; Has the current segment finished?
-	bne.s	.nextRow		; Branch if not
-	move.b	(a3)+,d1		; Fetch a new line count
-	move.w	(a2)+,d0		; Fetch scroll value for this row...
-	neg.w	d0			; ...and flip sign for VDP
-
-.nextRow:
-	dbf	d2,.rowLoop
-
-	rts
-; ===========================================================================
 ; loc_D0C6:
 SwScrl_CNZ:
-	; Use different background scrolling code for two player mode.
-	tst.w	(Two_player_mode).w
-	bne.w	SwScrl_CNZ_2P
-
 	; Update 'Camera_BG_Y_pos'.
 	move.w	(Camera_Y_pos).w,d0
 	lsr.w	#6,d0
@@ -16890,176 +15026,6 @@ SwScrl_CNZ_GenerateScrollValues:
 	rts
 ; End of function sub_D160
 
-; ===========================================================================
-; loc_D194:
-SwScrl_CNZ_2P:
-	; Do player 1's background.
-
-	; Update 'Camera_BG_Y_pos'.
-	move.w	(Camera_Y_pos).w,d0
-	lsr.w	#6,d0
-	move.w	d0,(Camera_BG_Y_pos).w
-
-	; Update the background's vertical scrolling.
-	move.w	(Camera_BG_Y_pos).w,(Vscroll_Factor_BG).w
-
-	; Only allow the screen to vertically scroll two pixels at a time.
-	andi.l	#$FFFEFFFE,(Vscroll_Factor).w
-
-	; Populate a list of horizontal scroll values for each row.
-	; The background is broken up into multiple rows of arbitrary
-	; heights, with each row getting its own scroll value.
-	; This is used to create an elaborate parallax effect.
-	move.w	(Camera_X_pos).w,d2
-	bsr.w	SwScrl_CNZ_GenerateScrollValues
-
-	; Use the list of row scroll values and a list of row heights to fill
-	; 'Horiz_Scroll_Buf'.
-	lea	(Horiz_Scroll_Buf).w,a1
-	move.w	(Camera_BG_Y_pos).w,d1
-	moveq	#0,d0
-	move.w	(Camera_X_pos).w,d0
-	move.w	#112-1,d2
-	lea	(SwScrl_CNZ2P_RowHeights_P1).l,a3
-	bsr.s	.doBackground
-
-	; Do player 2's background.
-
-	; Update 'Camera_BG_Y_pos'.
-	move.w	(Camera_Y_pos_P2).w,d0
-	lsr.w	#6,d0
-	move.w	d0,(Camera_BG_Y_pos_P2).w
-
-	; Update the background's vertical scrolling.
-	move.w	d0,(Vscroll_Factor_P2_BG).w
-	subi.w	#screen_height,(Vscroll_Factor_P2_BG).w
-
-	; Update the foreground's vertical scrolling.
-	move.w	(Camera_Y_pos_P2).w,(Vscroll_Factor_P2_FG).w
-	subi.w	#screen_height,(Vscroll_Factor_P2_FG).w
-
-	; Only allow the screen to vertically scroll two pixels at a time.
-	andi.l	#$FFFEFFFE,(Vscroll_Factor_P2).w
-
-	; Populate a list of horizontal scroll values for each row.
-	; The background is broken up into multiple rows of arbitrary
-	; heights, with each row getting its own scroll value.
-	; This is used to create an elaborate parallax effect.
-	move.w	(Camera_X_pos_P2).w,d2
-	bsr.w	SwScrl_CNZ_GenerateScrollValues
-
-	; Use the list of row scroll values and a list of row heights to fill
-	; 'Horiz_Scroll_Buf'.
-	; Tails' screen is slightly taller, to fill the gap between the two
-	; screens.
-	lea	(Horiz_Scroll_Buf+(112-4)*2*2).w,a1
-	move.w	(Camera_BG_Y_pos_P2).w,d1
-	moveq	#0,d0
-	move.w	(Camera_X_pos_P2).w,d0
-	move.w	#112+4-1,d2
-	lea	(SwScrl_CNZ2P_RowHeights_P2).l,a3
-
-    if fixBugs
-	; Use a similar trick to Mystic Cave Zone: override the first value
-	; in the code here.
-	lsr.w	#1,d1
-	lea	(TempArray_LayerDef).w,a2
-	; Extend the first segment of 'SwScrl_CNZ2P_RowHeights' by 4 lines.
-	move.w	#8+4,d3
-	bra.s	.useOwnSegmentSize
-    endif
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-; sub_D216:
-.doBackground:
-	lsr.w	#1,d1
-	lea	(TempArray_LayerDef).w,a2
-	moveq	#0,d3
-
-	; Find the first visible scrolling section
-.segmentLoop:
-	move.b	(a3)+,d3		; Number of lines in this segment
-
-.useOwnSegmentSize:
-	addq.w	#2,a2
-	sub.w	d3,d1			; Does this segment have any visible lines?
-	bcc.s	.segmentLoop		; Branch if not
-
-	neg.w	d1			; d1 = number of lines to draw in this segment
-	subq.w	#2,a2
-	neg.w	d0
-	swap	d0
-	move.w	(a2)+,d0		; Fetch scroll value for this row...
-	neg.w	d0			; ...and flip sign for VDP
-
-.rowLoop:
-	move.l	d0,(a1)+
-	subq.w	#1,d1			; Has the current segment finished?
-	bne.s	.nextRow		; Branch if not
-
-.nextSegment:
-	move.w	(a2)+,d0		; Fetch scroll value for this row...
-	neg.w	d0			; ...and flip sign for VDP
-	move.b	(a3)+,d1		; Fetch a new line count
-	beq.s	.isRipplingSegment	; Branch if special segment
-
-.nextRow:
-	dbf	d2,.rowLoop
-
-	rts
-; ===========================================================================
-
-.isRipplingSegment:
-	; This row is 8 pixels tall.
-	move.w	#8-1,d1
-	move.w	d0,d3
-	; Animate the rippling effect every 8 frames.
-	move.b	(Vint_runcount+3).w,d0
-	lsr.w	#3,d0
-	neg.w	d0
-	andi.w	#$1F,d0
-	lea_	SwScrl_RippleData,a4
-	lea	(a4,d0.w),a4
-
-.rippleLoop:
-	move.b	(a4)+,d0
-	ext.w	d0
-	add.w	d3,d0
-	move.l	d0,(a1)+
-	dbf	d1,.rippleLoop
-
-	; We've done 8 lines, so subtract them from the counter.
-	subq.w	#8,d2
-	bra.s	.nextSegment
-; End of function sub_D216
-
-; ===========================================================================
-    if ~~fixBugs
-	; This doesn't have the effect that the developers intended: rather
-	; than just extend the topmost segment, it creates additional
-	; segments which cause the later segments to use the wrong scroll
-	; values.
-	dc.b   4
-SwScrl_CNZ2P_RowHeights_P2:
-	dc.b   4
-    endif
-SwScrl_CNZ2P_RowHeights_P1:
-	dc.b   8
-    if fixBugs
-	; See above.
-SwScrl_CNZ2P_RowHeights_P2:
-    endif
-	dc.b   8
-	dc.b   8
-	dc.b   8
-	dc.b   8
-	dc.b   8
-	dc.b   8
-	dc.b   8
-	dc.b   0	; Special (actually has a height of 8)
-	dc.b 120
-	even
 ; ===========================================================================
 ; loc_D27C:
 SwScrl_CPZ:
@@ -18360,15 +16326,6 @@ LoadTilesAsYouMove:
 	lea	(Camera_BG3_copy).w,a3
 	bsr.w	Draw_BG3	; used in CPZ deformation routine
 
-	tst.w	(Two_player_mode).w
-	beq.s	+
-	lea	(Scroll_flags_copy_P2).w,a2
-	lea	(Camera_P2_copy).w,a3	; second player camera
-	lea	(Level_Layout).w,a4
-	move.w	#vdpComm(VRAM_Plane_A_Name_Table_2P,VRAM,WRITE)>>16,d2
-	bsr.w	Draw_FG_P2
-
-+
 	lea	(Scroll_flags_copy).w,a2
 	lea	(Camera_RAM_copy).w,a3
 	lea	(Level_Layout).w,a4
@@ -18442,54 +16399,6 @@ Draw_FG:
 
 return_DB5A:
 	rts
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-;sub_DB5C:
-Draw_FG_P2:
-	tst.b	(a2)
-	beq.s	return_DBC0
-
-	bclr	#scroll_flag_fg_up,(a2)
-	beq.s	+
-	moveq	#-block_height,d4	; Y offset
-	moveq	#-block_width,d5	; X offset
-	bsr.w	CalculateVRAMAddressOfBlockForPlayer2
-	moveq	#-block_height,d4	; Y offset
-	moveq	#-block_width,d5	; X offset
-	bsr.w	DrawBlockRow
-+
-	bclr	#scroll_flag_fg_down,(a2)
-	beq.s	+
-	move.w	#screen_height,d4	; Y offset
-	moveq	#-block_width,d5	; X offset
-	bsr.w	CalculateVRAMAddressOfBlockForPlayer2
-	move.w	#screen_height,d4	; Y offset
-	moveq	#-block_width,d5	; X offset
-	bsr.w	DrawBlockRow
-+
-	bclr	#scroll_flag_fg_left,(a2)
-	beq.s	+
-	moveq	#-block_height,d4	; Y offset
-	moveq	#-block_width,d5	; X offset
-	bsr.w	CalculateVRAMAddressOfBlockForPlayer2
-	moveq	#-block_height,d4	; Y offset
-	moveq	#-block_width,d5	; X offset
-	bsr.w	DrawBlockColumn
-+
-	bclr	#scroll_flag_fg_right,(a2)
-	beq.s	return_DBC0
-	moveq	#-block_height,d4	; Y offset
-	move.w	#screen_width,d5	; X offset
-	bsr.w	CalculateVRAMAddressOfBlockForPlayer2
-	moveq	#-block_height,d4	; Y offset
-	move.w	#screen_width,d5	; X offset
-	bsr.w	DrawBlockColumn
-
-return_DBC0:
-	rts
-; End of function Draw_FG_P2
-
 
 ; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
 
@@ -18955,9 +16864,6 @@ BGCameraLookup:
 ; ===========================================================================
 ; loc_DE86:
 DrawBlockColumn_Advanced:
-	tst.w	(Two_player_mode).w
-	bne.s	.doubleResolution
-
 	moveq	#(1+screen_height/block_height+1)-1,d6	; Enough blocks to cover the screen, plus one more on the top and bottom.
 	move.l	#vdpCommDelta(gameplay_plane_width/tile_width*2),d7	; store VDP command for line increment
 
@@ -18988,10 +16894,6 @@ DrawBlockColumn_Advanced:
 
 	rts
 ; ===========================================================================
-
-.doubleResolution:
-	moveq	#(1+screen_height/block_height+1)-1,d6	; Enough blocks to cover the screen, plus one more on the top and bottom.
-	move.l	#vdpCommDelta(gameplay_plane_width/tile_width*2),d7	; store VDP command for line increment
 
 -
 	; If the block is not part of the row that needs updating, then skip
@@ -19166,9 +17068,6 @@ DrawBlockColumn:
 	move.l	d0,d1		; copy byte-swapped VDP command for later access
 	bsr.w	GetAddressOfBlockInChunk
 
-	tst.w	(Two_player_mode).w
-	bne.s	.doubleResolution
-
 -	move.w	(a0),d3		; get ID of the 16x16 block
 	andi.w	#$3FF,d3
 	lsl.w	#3,d3		; multiply by 8, the size in bytes of a 16x16
@@ -19185,27 +17084,6 @@ DrawBlockColumn:
 	bne.s	+		; if not, branch
 	bsr.w	GetAddressOfBlockInChunk	; otherwise, renew the block address
 +	dbf	d6,-		; repeat 16 times
-
-	rts
-; ===========================================================================
-
-.doubleResolution:
--	move.w	(a0),d3
-	andi.w	#$3FF,d3
-	lsl.w	#3,d3
-	movea.l	(Block_Table).w,a1
-	adda.w	d3,a1
-	move.l	d1,d0
-	bsr.w	ProcessAndWriteBlock_DoubleResolution_Vertical
-	adda.w	#chunk_width/block_width*2,a0
-	addi.w	#gameplay_plane_width/tile_width*2,d1
-	andi.w	#((gameplay_plane_width/tile_width)*(gameplay_plane_height/tile_height)*2)-1,d1
-	addi.w	#block_height,d4
-	move.w	d4,d0
-	andi.w	#$70,d0
-	bne.s	+
-	bsr.w	GetAddressOfBlockInChunk
-+	dbf	d6,-
 
 	rts
 ; End of function DrawBlockColumn
@@ -19232,9 +17110,6 @@ DrawBlockRow:
 	add.w	4(a3),d4	; add Y pos
 ; loc_DF9A: DrawTiles_Vertical3: DrawBlockRow3:
 .AbsoluteXAbsoluteYCustomWidth:
-	tst.w	(Two_player_mode).w
-	bne.s	.doubleResolution
-
 	move.l	a2,-(sp)
 	move.w	d6,-(sp)
 	lea	(Block_cache).w,a2
@@ -19286,67 +17161,6 @@ DrawBlockRow:
 	dbf	d6,-		; repeat 22 times
 
 	movea.l	(sp)+,a2
-	rts
-; ===========================================================================
-; loc_E018: DrawBlockRow_2P:
-.doubleResolution:
-	move.l	d0,d1
-	or.w	d2,d1
-	swap	d1
-	move.l	d1,(a5)
-	swap	d1
-	tst.b	d1
-	bmi.s	+++
-
-	bsr.w	GetAddressOfBlockInChunk
-
--	move.w	(a0),d3
-	andi.w	#$3FF,d3
-	lsl.w	#3,d3
-	movea.l	(Block_Table).w,a1
-	adda.w	d3,a1
-	bsr.w	ProcessAndWriteBlock_DoubleResolution_Horizontal
-	addq.w	#2,a0
-	addq.b	#4,d1
-	bpl.s	+
-	andi.b	#$7F,d1
-	swap	d1
-	move.l	d1,(a5)
-	swap	d1
-+
-	addi.w	#block_width,d5
-	move.w	d5,d0
-	andi.w	#$70,d0
-	bne.s	+
-	bsr.w	GetAddressOfBlockInChunk
-+	dbf	d6,-
-
-	rts
-; ===========================================================================
-+
-	bsr.w	GetAddressOfBlockInChunk
-
--	move.w	(a0),d3
-	andi.w	#$3FF,d3
-	lsl.w	#3,d3
-	movea.l	(Block_Table).w,a1
-	adda.w	d3,a1
-	bsr.w	ProcessAndWriteBlock_DoubleResolution_Horizontal
-	addq.w	#2,a0
-	addq.b	#4,d1
-	bmi.s	+
-	ori.b	#$80,d1
-	swap	d1
-	move.l	d1,(a5)
-	swap	d1
-+
-	addi.w	#block_width,d5
-	move.w	d5,d0
-	andi.w	#$70,d0
-	bne.s	+
-	bsr.w	GetAddressOfBlockInChunk
-+	dbf	d6,-
-
 	rts
 ; End of function DrawBlockRow
 
@@ -19542,51 +17356,6 @@ ProcessAndWriteBlock_Vertical:
 
 ; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
 
-
-;sub_E1FA: ProcessAndWriteBlock2_2P:
-ProcessAndWriteBlock_DoubleResolution_Vertical:
-	or.w	d2,d0
-	swap	d0
-	btst	#3,(a0)
-	bne.s	.flipY
-	btst	#2,(a0)
-	bne.s	.flipX
-	move.l	d0,(a5)
-	move.l	(a1)+,(a6)
-	rts
-; ===========================================================================
-; loc_E210:
-.flipX:
-	move.l	d0,(a5)
-	move.l	(a1)+,d3
-	eori.l	#(flip_x<<16)|flip_x,d3
-	swap	d3
-	move.l	d3,(a6)
-	rts
-; ===========================================================================
-; loc_E220:
-.flipY:
-	btst	#2,(a0)
-	bne.s	.flipXY
-	move.l	d0,(a5)
-	move.l	(a1)+,d3
-	eori.l	#(flip_y<<16)|flip_y,d3
-	move.l	d3,(a6)
-	rts
-; ===========================================================================
-; loc_E234:
-.flipXY:
-	move.l	d0,(a5)
-	move.l	(a1)+,d3
-	eori.l	#((flip_x|flip_y)<<16)|flip_x|flip_y,d3
-	swap	d3
-	move.l	d3,(a6)
-	rts
-; End of function ProcessAndWriteBlock_DoubleResolution_Vertical
-
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
 ; sub_E244: GetBlockPtr:
 GetBlock:
 	add.w	(a3),d5
@@ -19624,8 +17393,6 @@ CalculateVRAMAddressOfBlockForPlayer1:
 	add.w	(a3),d5		; add X pos
 ; CalcBlockVRAMPos2:
 .AbsoluteX:
-	tst.w	(Two_player_mode).w
-	bne.s	.AbsoluteX_DoubleResolution
 	add.w	4(a3),d4	; add Y pos
 ; CalcBlockVRAMPos_NoCamera:
 .AbsoluteXAbsoluteY:
@@ -19639,32 +17406,11 @@ CalculateVRAMAddressOfBlockForPlayer1:
 	swap	d0
 	move.w	d4,d0		; make word-swapped VDP command
 	rts
-; ===========================================================================
-; loc_E2A8: CalcBlockVRAMPos_2P:
-.AbsoluteX_DoubleResolution:
-	add.w	4(a3),d4
-; loc_E2AC: CalcBlockVRAMPos_2P_NoCamera:
-.AbsoluteXAbsoluteY_DoubleResolution:
-	andi.w	#$1F0,d4
-	andi.w	#$1F0,d5
-	lsl.w	#3,d4
-	lsr.w	#2,d5
-	add.w	d5,d4
-	; access a VDP address in plane name table A ($C000) or B ($E000) if d2 has bit 13 unset or set
-	moveq	#vdpComm(VRAM_Plane_A_Name_Table,VRAM,WRITE)&$FFFF,d0
-	swap	d0
-	move.w	d4,d0
-	rts
 ; End of function CalculateVRAMAddressOfBlockForPlayer1
 
 
 ; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
 
-
-;loc_E2C2: CalcBlockVRAMPosB:
-CalculateVRAMAddressOfBlockForPlayer2:
-	tst.w	(Two_player_mode).w
-	bne.s	.doubleResolution
 
 ;.regularResolution:
 	add.w	4(a3),d4
@@ -19679,27 +17425,6 @@ CalculateVRAMAddressOfBlockForPlayer2:
 	swap	d0
 	move.w	d4,d0
 	rts
-; ===========================================================================
-; This subroutine was in Sonic 1 unused and works by swapping the bottom portion
-; of the background's nametable with that of the window plane. This allowed for a
-; third scrolling layer (used in the Tokyo Toy Show '90 demo), at the cost of the
-; bottom of the background appearing blank.
-; Now, it is instead used to draw the second player's foreground.
-.doubleResolution:
-	add.w	4(a3),d4
-	add.w	(a3),d5
-	andi.w	#$1F0,d4
-	andi.w	#$1F0,d5
-	lsl.w	#3,d4
-	lsr.w	#2,d5
-	add.w	d5,d4
-	; access a VDP address in 2p plane name table A ($A000) or B ($8000) if d2 has bit 13 unset or set
-	moveq	#vdpComm(VRAM_Plane_A_Name_Table_2P,VRAM,WRITE)&$FFFF,d0
-	swap	d0
-	move.w	d4,d0
-	rts
-; End of function CalculateVRAMAddressOfBlockForPlayer2
-
 ; ===========================================================================
 ; Loads the background in its initial state into VRAM (plane B). Especially
 ; important for levels that never re-load the background dynamically.
@@ -19745,10 +17470,6 @@ DrawInitialBG:
 	cmpi.b	#casino_night_zone,(Current_Zone).w
 	beq.w	++
     endif
-	tst.w	(Two_player_mode).w
-	beq.w	+
-	cmpi.b	#mystic_cave_zone,(Current_Zone).w
-	beq.w	DrawInitialBG_LoadWholeBackground_512x512
 +
 	moveq	#-block_height,d4
 +
@@ -19790,30 +17511,6 @@ DrawInitialBG:
 
 	rts
 ; ===========================================================================
-; loc_E396:
-DrawInitialBG_LoadWholeBackground_512x512:
-	; Mystic Cave Zone loads its entire background at once in two player
-	; mode, since the plane is big enough to fit it, unlike in one player
-	; mode (512x512 instead of 512x256).
-	moveq	#0,d4	; Absolute plane Y coordinate.
-
-	moveq	#gameplay_plane_height_2p/block_height-1,d6 ; Height of plane in blocks minus 1.
--	movem.l	d4-d6,-(sp)
-	moveq	#0,d5
-	move.w	d4,d1
-	bsr.w	CalculateVRAMAddressOfBlockForPlayer1.AbsoluteXAbsoluteY_DoubleResolution
-	move.w	d1,d4
-	moveq	#0,d5
-	moveq	#gameplay_plane_width/block_width-1,d6 ; Width of plane in blocks minus 1.
-	move	#$2700,sr
-	bsr.w	DrawBlockRow.AbsoluteXAbsoluteYCustomWidth
-	move	#$2300,sr
-	movem.l	(sp)+,d4-d6
-	addi.w	#block_height,d4
-	dbf	d6,-
-
-	rts
-; ===========================================================================
     if fixBugs
 DrawInitialBG_LoadWholeBackground_512x256:
 	moveq	#0,d4	; Absolute plane Y coordinate.
@@ -19822,11 +17519,7 @@ DrawInitialBG_LoadWholeBackground_512x256:
 -	movem.l	d4-d6,-(sp)
 	moveq	#0,d5
 	move.w	d4,d1
-	; This is just a fancy efficient way of doing 'if true then call this, else call that'.
-	pea	+(pc)
-	tst.w	(Two_player_mode).w
-	beq.w	CalculateVRAMAddressOfBlockForPlayer1.AbsoluteXAbsoluteY
-	bra.w	CalculateVRAMAddressOfBlockForPlayer1.AbsoluteXAbsoluteY_DoubleResolution
+	bsr.w	CalculateVRAMAddressOfBlockForPlayer1.AbsoluteXAbsoluteY
 +
 	move.w	d1,d4
 	moveq	#0,d5
@@ -19862,16 +17555,6 @@ loadZoneBlockMaps:
 	move.l	(a2)+,d0
 	andi.l	#$FFFFFF,d0	; pointer to block mappings
 	move.l	d0,(Block_Table).w
-	tst.w	(Two_player_mode).w
-	beq.s	+
-	moveq	#0,d1
-	move.b	(Current_Zone).w,d1
-	add.w	d1,d1
-	add.w	d1,d1
-	lea	(LevelBlocks2P).l,a1
-	lea	(a1,d1.w),a1
-	move.l	(a1)+,(Block_Table).w
-+
 	move.l	(a2)+,d0
 	andi.l	#$FFFFFF,d0	; pointer to chunk mappings
 	movea.l	d0,a0
@@ -24798,10 +22481,6 @@ Obj25_Delete:
 
 ; sub_11FC2:
 CollectRing:
-	tst.b	parent+1(a0)		; did Tails collect the ring?
-	bne.s	CollectRing_Tails	; if yes, branch
-
-CollectRing_Sonic:
 	cmpi.w	#999,(Rings_Collected).w ; did Sonic collect 999 or more rings?
 	bhs.s	CollectRing_1P		; if yes, branch
 	addq.w	#1,(Rings_Collected).w	; add 1 to the number of collected rings
@@ -24841,40 +22520,6 @@ JmpTo_PlaySound2 ; JmpTo
 	jmp	(PlaySound).l
 ; ===========================================================================
 	rts
-; ===========================================================================
-
-CollectRing_Tails:
-	cmpi.w	#999,(Rings_Collected_2P).w	; did Tails collect 999 or more rings?
-	bhs.s	+				; if yes, branch
-	addq.w	#1,(Rings_Collected_2P).w	; add 1 to the number of collected rings
-+
-	cmpi.w	#999,(Ring_count_2P).w		; does Tails have 999 or more rings?
-	bhs.s	+				; if yes, branch
-	addq.w	#1,(Ring_count_2P).w		; add 1 to the ring count
-+
-	tst.w	(Two_player_mode).w		; are we in a 2P game?
-	beq.s	CollectRing_1P			; if not, branch
-
-; CollectRing_2P:
-	ori.b	#1,(Update_HUD_rings_2P).w	; set flag to update the ring counter in the second player's HUD
-	cmpi.w	#100,(Ring_count_2P).w		; does the player 2 have less than 100 rings?
-	blo.s	JmpTo2_PlaySound2		; if yes, play the ring sound
-	bset	#1,(Extra_life_flags_2P).w	; test and set the flag for the first extra life
-	beq.s	+				; if it was clear before, branch
-	cmpi.w	#200,(Ring_count_2P).w		; does the player 2 have less than 200 rings?
-	blo.s	JmpTo2_PlaySound2		; if yes, play the ring sound
-	bset	#2,(Extra_life_flags_2P).w	; test and set the flag for the second extra life
-	bne.s	JmpTo2_PlaySound2		; if it was set before, play the ring sound
-+
-	addq.b	#1,(Life_count_2P).w		; add 1 to the life count
-	addq.b	#1,(Update_HUD_lives_2P).w	; add 1 to the displayed life count
-	move.w	#MusID_ExtraLife,d0		; prepare to play the extra life jingle
-	jmp	(PlayMusic).l
-; ===========================================================================
-
-JmpTo2_PlaySound2 ; JmpTo
-	move.w	#SndID_Ring,d0			; prepare to play the ring sound
-	jmp	(PlaySound).l
 ; End of function CollectRing
 
 ; ===========================================================================
@@ -25324,7 +22969,6 @@ Obj26_Init:
 	move.b	#$E,x_radius(a0)
 	move.l	#Obj26_MapUnc_12D36,mappings(a0)
 	move.w	#make_art_tile(ArtTile_ArtNem_Powerups,0,0),art_tile(a0)
-	bsr.w	Adjust2PArtPointer
 	move.b	#1<<render_flags.level_fg,render_flags(a0)
 	move.b	#3,priority(a0)
 	move.b	#$F,width_pixels(a0)
@@ -25352,9 +22996,6 @@ Obj26_Init:
 +
 	move.b	#$46,collision_flags(a0)
 	move.b	subtype(a0),anim(a0)	; subtype = icon to display
-	tst.w	(Two_player_mode).w	; is it two player mode?
-	beq.s	Obj26_Main		; if not, branch
-	move.b	#9,anim(a0)		; use '?' icon
 ; loc_12A00: obj_26_sub_2:
 Obj26_Main:
 	move.b	routine_secondary(a0),d0
@@ -25408,13 +23049,7 @@ SolidObject_Monitor_Sonic:
 ; sub_12768:
 SolidObject_Monitor_Tails:
 	btst	d6,status(a0)			; is Tails standing on the monitor?
-	bne.s	Obj26_ChkOverEdge		; if yes, branch
-	tst.w	(Two_player_mode).w		; is it two player mode?
 	beq.w	SolidObject_cont		; if not, branch
-	; in one player mode monitors always behave as solid for Tails
-	cmpi.b	#AniIDSonAni_Roll,anim(a1)	; is Tails spinning?
-	bne.w	SolidObject_cont		; if not, branch
-	rts
 ; End of function SolidObject_Monitor_Tails
 
 ; ---------------------------------------------------------------------------
@@ -25525,35 +23160,12 @@ Obj2E_Index:	offsetTable
 Obj2E_Init:
 	addq.b	#2,routine(a0)
 	move.w	#make_art_tile(ArtTile_ArtNem_Powerups,0,1),art_tile(a0)
-	bsr.w	Adjust2PArtPointer
 	move.b	#1<<render_flags.static_mappings|1<<render_flags.level_fg,render_flags(a0)
 	move.b	#3,priority(a0)
 	move.b	#8,width_pixels(a0)
 	move.w	#-$300,y_vel(a0)
 	moveq	#0,d0
 	move.b	anim(a0),d0
-
-	tst.w	(Two_player_mode).w	; is it two player mode?
-	beq.s	loc_128C6		; if not, branch
-	; give 'random' item in two player mode
-	move.w	(Level_frame_counter).w,d0	; use the timer to determine which item
-	andi.w	#7,d0	; and 7 means there are 8 different items
-	addq.w	#1,d0	; add 1 to prevent getting the static monitor
-	tst.w	(Two_player_items).w	; are monitors set to 'teleport only'?
-	beq.s	+			; if not, branch
-	moveq	#8,d0			; force contents to be teleport
-+	; keep teleport monitor from causing unwanted effects
-	cmpi.w	#8,d0	; teleport?
-	bne.s	+	; if not, branch
-	move.b	(Update_HUD_timer).w,d1
-	add.b	(Update_HUD_timer_2P).w,d1
-	cmpi.b	#2,d1	; is either player done with the act?
-	beq.s	+	; if not, branch
-	moveq	#7,d0	; give invincibility, instead
-+
-	move.b	d0,anim(a0)
-
-loc_128C6:			; Determine correct mappings offset.
 	addq.b	#1,d0
 	move.b	d0,mapping_frame(a0)
 	movea.l	#Obj26_MapUnc_12D36,a1
@@ -25627,17 +23239,6 @@ sonic_1up:
 	jmp	(PlayMusic).l	; Play extra life music
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Tails 1up Monitor
-; gives Tails an extra life in two player mode
-; ---------------------------------------------------------------------------
-tails_1up:
-	addq.w	#1,(Monitors_Broken_2P).w
-	addq.b	#1,(Life_count_2P).w
-	addq.b	#1,(Update_HUD_lives_2P).w
-	move.w	#MusID_ExtraLife,d0
-	jmp	(PlayMusic).l	; Play extra life music
-; ===========================================================================
-; ---------------------------------------------------------------------------
 ; Super Ring Monitor
 ; gives the player 10 rings
 ; ---------------------------------------------------------------------------
@@ -25648,25 +23249,12 @@ super_ring:
 	lea	(Ring_count).w,a2
 	lea	(Update_HUD_rings).w,a3
 	lea	(Extra_life_flags).w,a4
-	cmpa.w	#MainCharacter,a1
-	beq.s	+
-	lea	(Ring_count_2P).w,a2
-	lea	(Update_HUD_rings_2P).w,a3
-	lea	(Extra_life_flags_2P).w,a4
-+	; give player 10 rings
 	addi.w	#10,(a2)
     else
 	lea	(Ring_count).w,a2
 	lea	(Update_HUD_rings).w,a3
 	lea	(Extra_life_flags).w,a4
 	lea	(Rings_Collected).w,a5
-	cmpa.w	#MainCharacter,a1
-	beq.s	+
-	lea	(Ring_count_2P).w,a2
-	lea	(Update_HUD_rings_2P).w,a3
-	lea	(Extra_life_flags_2P).w,a4
-	lea	(Rings_Collected_2P).w,a5
-+
 	addi.w	#10,(a5)
 	cmpi.w	#999,(a5)
 	blo.s	+
@@ -25735,15 +23323,8 @@ shield_monitor:
 	bset	#status_secondary.shield,status_secondary(a1)	; give shield status
 	move.w	#SndID_Shield,d0
 	jsr	(PlaySound).l
-	tst.b	parent+1(a0)
-	bne.s	+
 	move.b	#ObjID_Shield,(Sonic_Shield+id).w ; load Obj38 (shield) at $FFFFD180
 	move.w	a1,(Sonic_Shield+parent).w
-	rts
-; ---------------------------------------------------------------------------
-+	; give shield to sidekick
-	move.b	#ObjID_Shield,(Tails_Shield+id).w ; load Obj38 (shield) at $FFFFD1C0
-	move.w	a1,(Tails_Shield+parent).w
 	rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -25763,15 +23344,10 @@ invincible_monitor:
 	move.w	#MusID_Invincible,d0
 	jsr	(PlayMusic).l
 +
-	tst.b	parent+1(a0)
-	bne.s	+
 	move.b	#ObjID_InvStars,(Sonic_InvincibilityStars+id).w ; load Obj35 (invincibility stars) at $FFFFD200
 	move.w	a1,(Sonic_InvincibilityStars+parent).w
 	rts
-; ---------------------------------------------------------------------------
-+	; give invincibility to sidekick
-	move.b	#ObjID_InvStars,(Tails_InvincibilityStars+id).w ; load Obj35 (invincibility stars) at $FFFFD300
-	move.w	a1,(Tails_InvincibilityStars+parent).w
++
 +
 	rts
 ; ===========================================================================
@@ -25781,12 +23357,6 @@ invincible_monitor:
 ; ---------------------------------------------------------------------------
 ;loc_12AA6:
 teleport_monitor:
-	addq.w	#1,(a2)
-	cmpi.b	#6,(MainCharacter+routine).w	; is player 1 dead or respawning?
-	bhs.s	+				; if yes, branch
-	cmpi.b	#6,(Sidekick+routine).w		; is player 2 dead or respawning?
-	blo.s	swap_players			; if not, branch
-+	; can't teleport if either player is dead
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -27531,25 +25101,6 @@ Obj39_TimeOver:
 	move.w	#1,(Level_Inactive_flag).w
 ; loc_1403E:
 Obj39_Check2PMode:
-	tst.w	(Two_player_mode).w
-	beq.s	Obj39_Display
-
-	move.w	#0,(Level_Inactive_flag).w
-	move.b	#GameModeID_2PResults,(Game_Mode).w ; => TwoPlayerResults
-	move.w	#VsRSID_Act,(Results_Screen_2P).w
-	tst.b	(Time_Over_flag).w
-	bne.s	Obj39_Display
-	tst.b	(Time_Over_flag_2P).w
-	bne.s	Obj39_Display
-	move.w	#1,(Game_Over_2P).w
-	move.w	#VsRSID_Zone,(Results_Screen_2P).w
-	jsrto	JmpTo_sub_8476
-	move.w	#-1,(a4)
-	tst.b	parent+1(a0)
-	beq.s	+
-	addq.w	#1,a4
-+
-	move.b	#-2,(a4)
 ; BranchTo17_DisplaySprite
 Obj39_Display:
 	bra.w	DisplaySprite
@@ -27764,11 +25315,6 @@ loc_14270:
 	add.b	(Current_Act).w,d0
 	add.w	d0,d0
 	lea	LevelOrder(pc),a1
-	tst.w	(Two_player_mode).w
-	beq.s	loc_1428C
-	lea	LevelOrder_2P(pc),a1
-
-loc_1428C:
 	move.w	(a1,d0.w),d0
 	tst.w	d0
 	bpl.s	loc_1429C
@@ -27860,61 +25406,6 @@ LevelOrder: zoneOrderedTable 2,2	; WrdArr_LevelOrder
 	zoneTableEntry.w  hill_top_zone_act_1		; Act 2
 	; CPZ
 	zoneTableEntry.w  chemical_plant_zone_act_2	; Act 1
-	zoneTableEntry.w  aquatic_ruin_zone_act_1	; Act 2
-	; DEZ
-	zoneTableEntry.w  -1				; Act 1
-	zoneTableEntry.w  0				; Act 2
-	; ARZ
-	zoneTableEntry.w  aquatic_ruin_zone_act_2	; Act 1
-	zoneTableEntry.w  casino_night_zone_act_1	; Act 2
-	; SCZ
-	zoneTableEntry.w  wing_fortress_zone_act_1 	; Act 1
-	zoneTableEntry.w  0				; Act 2
-    zoneTableEnd
-
-;word_1433C:
-LevelOrder_2P: zoneOrderedTable 2,2	; WrdArr_LevelOrder_2P
-	; EHZ
-	zoneTableEntry.w  emerald_hill_zone_act_2	; Act 1
-	zoneTableEntry.w  casino_night_zone_act_1	; Act 2
-	; Zone 1
-	zoneTableEntry.w  0				; Act 1
-	zoneTableEntry.w  0				; Act 2
-	; WZ
-	zoneTableEntry.w  wood_zone_act_2		; Act 1
-	zoneTableEntry.w  metropolis_zone_act_1		; Act 2
-	; Zone 3
-	zoneTableEntry.w  0				; Act 1
-	zoneTableEntry.w  0				; Act 2
-	; MTZ
-	zoneTableEntry.w  metropolis_zone_act_2		; Act 1
-	zoneTableEntry.w  metropolis_zone_act_3		; Act 2
-	; MTZ
-	zoneTableEntry.w  sky_chase_zone_act_1		; Act 3
-	zoneTableEntry.w  0				; Act 4
-	; WFZ
-	zoneTableEntry.w  death_egg_zone_act_1		; Act 1
-	zoneTableEntry.w  0				; Act 2
-	; HTZ
-	zoneTableEntry.w  hill_top_zone_act_2		; Act 1
-	zoneTableEntry.w  mystic_cave_zone_act_1	; Act 2
-	; HPZ
-	zoneTableEntry.w  hidden_palace_zone_act_2 	; Act 1
-	zoneTableEntry.w  oil_ocean_zone_act_1		; Act 2
-	; Zone 9
-	zoneTableEntry.w  0				; Act 1
-	zoneTableEntry.w  0				; Act 2
-	; OOZ
-	zoneTableEntry.w  oil_ocean_zone_act_2		; Act 1
-	zoneTableEntry.w  metropolis_zone_act_1		; Act 2
-	; MCZ
-	zoneTableEntry.w  mystic_cave_zone_act_2	; Act 1
-	zoneTableEntry.w  -1				; Act 2
-	; CNZ
-	zoneTableEntry.w  casino_night_zone_act_2	; Act 1
-	zoneTableEntry.w  mystic_cave_zone_act_1	; Act 2
-	; CPZ
-	zoneTableEntry.w  chemical_plant_zone_act_2 	; Act 1
 	zoneTableEntry.w  aquatic_ruin_zone_act_1	; Act 2
 	; DEZ
 	zoneTableEntry.w  -1				; Act 1
@@ -29096,7 +26587,7 @@ TitleCardLetters_DEZ:
 
 ; ===========================================================================
 
-	jmpTos JmpTo2_NemDec,JmpTo_NemDecToRAM,JmpTo3_LoadPLC,JmpTo_sub_8476
+	jmpTos JmpTo2_NemDec,JmpTo_NemDecToRAM,JmpTo3_LoadPLC
 
 
 
@@ -29724,7 +27215,7 @@ ObjPtr_BlueBalls:	dc.l Obj1D	; Blue balls in CPZ (jumping droplets hazard)
 ObjPtr_CPZSpinTube:	dc.l Obj1E	; Spin tube from CPZ
 ObjPtr_CollapsPform:	dc.l Obj1F	; Collapsing platform from ARZ, MCZ and OOZ (and MZ, SLZ and SBZ)
 ObjPtr_LavaBubble:	dc.l Obj20	; Lava bubble from Hill Top Zone (boss weapon)
-ObjPtr_2PResults:	dc.l Obj21	; 2P results
+			dc.l ObjNull	; 2P results
 ObjPtr_ArrowShooter:	dc.l Obj22	; Arrow shooter from ARZ
 ObjPtr_FallingPillar:	dc.l Obj23	; Pillar that drops its lower part from ARZ
 ObjPtr_ARZBubbles:	dc.l Obj24	; Bubbles in Aquatic Ruin Zone
@@ -29979,10 +27470,6 @@ ObjectMove:
 ; input: a0 = the object
 ; loc_163D2:
 MarkObjGone:
-	tst.w	(Two_player_mode).w	; is it two player mode?
-	beq.s	+			; if not, branch
-	bra.w	DisplaySprite
-+
 	move.w	x_pos(a0),d0
 	andi.w	#$FF80,d0
 	sub.w	(Camera_X_pos_coarse).w,d0
@@ -30001,10 +27488,6 @@ MarkObjGone:
 ; input: d0 = the object's x position
 ; loc_1640A:
 MarkObjGone2:
-	tst.w	(Two_player_mode).w
-	beq.s	+
-	bra.w	DisplaySprite
-+
 	andi.w	#$FF80,d0
 	sub.w	(Camera_X_pos_coarse).w,d0
 	cmpi.w	#$80+roundToNextMultiple(screen_width,$80)+$80,d0	; This gives an object $80 pixels of room offscreen before being unloaded
@@ -30023,10 +27506,6 @@ MarkObjGone2:
 ; does nothing instead of calling DisplaySprite in the case of no deletion
 ; loc_1643E:
 MarkObjGone3:
-	tst.w	(Two_player_mode).w
-	beq.s	+
-	rts
-+
 	move.w	x_pos(a0),d0
 	andi.w	#$FF80,d0
 	sub.w	(Camera_X_pos_coarse).w,d0
@@ -30045,8 +27524,6 @@ MarkObjGone3:
 ; input: a0 = the object
 ; loc_16472:
 MarkObjGone_P1:
-	tst.w	(Two_player_mode).w
-	bne.s	MarkObjGone_P2
 	move.w	x_pos(a0),d0
 	andi.w	#$FF80,d0
 	sub.w	(Camera_X_pos_coarse).w,d0
@@ -30061,31 +27538,7 @@ MarkObjGone_P1:
 	bclr	#7,Obj_respawn_data-Object_Respawn_Table(a2,d0.w)
 +
 	bra.w	DeleteObject
-; ---------------------------------------------------------------------------
-; input: a0 = the object
-; loc_164A6:
-MarkObjGone_P2:
-	move.w	x_pos(a0),d0
-	andi.w	#$FF00,d0
-	move.w	d0,d1
-	sub.w	(Camera_X_pos_coarse).w,d0
-	cmpi.w	#$300,d0
-	bhi.w	+
-	bra.w	DisplaySprite
-+
-	sub.w	(Camera_X_pos_coarse_P2).w,d1
-	cmpi.w	#$300,d1
-	bhi.w	+
-	bra.w	DisplaySprite
-+
-	lea	(Object_Respawn_Table).w,a2
-	moveq	#0,d0
-	move.b	respawn_index(a0),d0
-	beq.s	+
-	bclr	#7,Obj_respawn_data-Object_Respawn_Table(a2,d0.w)
-+
-	bra.w	DeleteObject ; useless branch...
-
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Subroutine to delete an object
 ; ---------------------------------------------------------------------------
@@ -30287,8 +27740,6 @@ Anim_End:
 
 ; sub_16604:
 BuildSprites:
-	tst.w	(Two_player_mode).w
-	bne.w	BuildSprites_2P
 	lea	(Sprite_Table).w,a2
 	moveq	#0,d5
 	moveq	#0,d4
@@ -30742,532 +28193,6 @@ CellOffsets_XFlip2:
 	dc.b $20,$20,$20,$20	; 16
 ; ===========================================================================
 
-; ---------------------------------------------------------------------------
-; Subroutine to convert mappings (etc) to proper Megadrive sprites
-; for 2-player (split screen) mode
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-; loc_1694E:
-BuildSprites_2P:
-    if fixBugs
-	; Like in Sonic 3, the sprite tables are page-flipped in two-player mode.
-	; This fixes a race-condition where incomplete sprite tables can be uploaded
-	; to the VDP on lag frames, causing corrupted sprites to appear.
-
-	; Modify the back buffer.
-	lea	(Sprite_Table).w,a2
-	tst.b	(Current_sprite_table_page).w
-	beq.s	+
-	lea	(Sprite_Table_Alternate).w,a2
-+
-    else
-	lea	(Sprite_Table).w,a2
-    endif
-	moveq	#2,d5
-	moveq	#0,d4
-	move.l	#$1D80F01,(a2)+	; mask all sprites
-	move.l	#1,(a2)+
-	move.l	#$1D80F02,(a2)+	; from 216px to 248px
-	move.l	#0,(a2)+
-	tst.b	(Level_started_flag).w
-	beq.s	+
-	jsrto	JmpTo_BuildHUD_P1
-	bsr.w	BuildRings_P1
-+
-	lea	(Object_Display_Lists).w,a4
-	moveq	#total_object_display_lists-1,d7
-; loc_16982:
-BuildSprites_P1_LevelLoop:
-	move.w	(a4),d0	; does this priority level have any objects?
-	beq.w	BuildSprites_P1_NextLevel	; if not, check next one
-	move.w	d0,-(sp)
-	moveq	#2,d6
-; loc_1698C:
-BuildSprites_P1_ObjLoop:
-	movea.w	(a4,d6.w),a0 ; a0=object
-
-	; These is a sanity check, to detect invalid objects which should not
-	; have been queued for display. S3K gets rid of this, since it
-	; should not be needed and it just slows this code down.
-	tst.b	id(a0)
-	beq.w	BuildSprites_P1_NextObj
-
-	andi.b	#~(1<<render_flags.on_screen)&$FF,render_flags(a0)
-	move.b	render_flags(a0),d0
-	move.b	d0,d4
-	btst	#render_flags.multi_sprite,d0
-	bne.w	BuildSprites_P1_MultiDraw
-	andi.w	#1<<render_flags.level_fg|1<<render_flags.level_bg,d0
-	beq.s	BuildSprites_P1_ScreenSpaceObj
-	lea	(Camera_X_pos).w,a1
-	moveq	#0,d0
-	move.b	width_pixels(a0),d0
-	move.w	x_pos(a0),d3
-	sub.w	(a1),d3
-	move.w	d3,d1
-	add.w	d0,d1
-	bmi.w	BuildSprites_P1_NextObj
-	move.w	d3,d1
-	sub.w	d0,d1
-	cmpi.w	#screen_width,d1
-	bge.s	BuildSprites_P1_NextObj
-	addi.w	#spriteScreenPositionX(0),d3
-	btst	#render_flags.explicit_height,d4
-	beq.s	BuildSprites_P1_ApproxYCheck
-	moveq	#0,d0
-	move.b	y_radius(a0),d0
-	move.w	y_pos(a0),d2
-	sub.w	4(a1),d2
-	move.w	d2,d1
-	add.w	d0,d1
-	bmi.s	BuildSprites_P1_NextObj
-	move.w	d2,d1
-	sub.w	d0,d1
-	cmpi.w	#screen_height,d1
-	bge.s	BuildSprites_P1_NextObj
-	addi.w	#spriteScreenPositionY2P(0),d2
-	bra.s	BuildSprites_P1_DrawSprite
-; ===========================================================================
-; loc_16A00:
-BuildSprites_P1_ScreenSpaceObj:
-	move.w	y_pixel(a0),d2
-	move.w	x_pixel(a0),d3
-	addi.w	#spriteScreenPositionY2P(0)-spriteScreenPositionY(0),d2 ; Rebase from 1p to 2p coordinate space
-	bra.s	BuildSprites_P1_DrawSprite
-; ===========================================================================
-; loc_16A0E:
-BuildSprites_P1_ApproxYCheck:
-	move.w	y_pos(a0),d2
-	sub.w	4(a1),d2
-	addi.w	#spriteScreenPositionY(0),d2
-	cmpi.w	#spriteScreenPositionY(0-32),d2
-	blo.s	BuildSprites_P1_NextObj
-	cmpi.w	#spriteScreenPositionY(screen_height+32),d2
-	bhs.s	BuildSprites_P1_NextObj
-	addi.w	#spriteScreenPositionY2P(0)-spriteScreenPositionY(0),d2 ; Rebase from 1p to 2p coordinate space
-; loc_16A2A:
-BuildSprites_P1_DrawSprite:
-	movea.l	mappings(a0),a1
-	moveq	#0,d1
-	btst	#render_flags.static_mappings,d4
-	bne.s	+
-	move.b	mapping_frame(a0),d1
-	add.w	d1,d1
-	adda.w	(a1,d1.w),a1
-	move.w	(a1)+,d1
-	subq.w	#1,d1
-	bmi.s	++
-+
-	bsr.w	DrawSprite_2P
-+
-	ori.b	#1<<render_flags.on_screen,render_flags(a0)
-; loc_16A50:
-BuildSprites_P1_NextObj:
-	addq.w	#2,d6
-	subq.w	#2,(sp)
-	bne.w	BuildSprites_P1_ObjLoop
-	addq.w	#2,sp
-; loc_16A5A:
-BuildSprites_P1_NextLevel:
-	lea	object_display_list_size(a4),a4
-	dbf	d7,BuildSprites_P1_LevelLoop
-	move.b	d5,(Sprite_count).w
-	; Terminate the sprite list.
-	; If the sprite list is full, then set the link field of the last
-	; entry to 0. Otherwise, push the next sprite offscreen and set its
-	; link field to 0. You might be thinking why this doesn't just do the
-	; first one no matter what. Well, think about what if the sprite list
-	; was empty: then it would access data before the start of the list.
-	cmpi.b	#80,d5
-	bhs.s	+
-	move.l	#0,(a2)
-	bra.s	BuildSprites_P2
-+
-	move.b	#0,-5(a2)
-
-; build sprites for player 2
-
-; loc_16A7A:
-BuildSprites_P2:
-    if fixBugs
-	; Like in Sonic 3, the sprite tables are page-flipped in two-player mode.
-	; This fixes a race-condition where incomplete sprite tables can be uploaded
-	; to the VDP on lag frames, causing corrupted sprites to appear.
-
-	; Modify the back buffer.
-	lea	(Sprite_Table_P2).w,a2
-	tst.b	(Current_sprite_table_page).w
-	beq.s	+
-	lea	(Sprite_Table_P2_Alternate).w,a2
-+
-    else
-	tst.w	(Hint_flag).w	; has H-int occured yet?
-	bne.s	BuildSprites_P2	; if not, wait
-	lea	(Sprite_Table_P2).w,a2
-    endif
-	moveq	#0,d5
-	moveq	#0,d4
-	tst.b	(Level_started_flag).w
-	beq.s	+
-	jsrto	JmpTo_BuildHUD_P2
-	bsr.w	BuildRings_P2
-+
-	lea	(Object_Display_Lists).w,a4
-	moveq	#total_object_display_lists-1,d7
-; loc_16A9C:
-BuildSprites_P2_LevelLoop:
-	move.w	(a4),d0
-	beq.w	BuildSprites_P2_NextLevel
-	move.w	d0,-(sp)
-	moveq	#2,d6
-; loc_16AA6:
-BuildSprites_P2_ObjLoop:
-	movea.w	(a4,d6.w),a0 ; a0=object
-
-	; These is a sanity check, to detect invalid objects which should not
-	; have been queued for display. S3K gets rid of this, since it
-	; should not be needed and it just slows this code down.
-	tst.b	id(a0)
-	beq.w	BuildSprites_P2_NextObj
-
-	move.b	render_flags(a0),d0
-	move.b	d0,d4
-	btst	#render_flags.multi_sprite,d0
-	bne.w	BuildSprites_P2_MultiDraw
-	andi.w	#1<<render_flags.level_fg|1<<render_flags.level_bg,d0
-	beq.s	BuildSprites_P2_ScreenSpaceObj
-	lea	(Camera_X_pos_P2).w,a1
-	moveq	#0,d0
-	move.b	width_pixels(a0),d0
-	move.w	x_pos(a0),d3
-	sub.w	(a1),d3
-	move.w	d3,d1
-	add.w	d0,d1
-	bmi.w	BuildSprites_P2_NextObj
-	move.w	d3,d1
-	sub.w	d0,d1
-	cmpi.w	#screen_width,d1
-	bge.s	BuildSprites_P2_NextObj
-	addi.w	#spriteScreenPositionX(0),d3
-	btst	#render_flags.explicit_height,d4
-	beq.s	BuildSprites_P2_ApproxYCheck
-	moveq	#0,d0
-	move.b	y_radius(a0),d0
-	move.w	y_pos(a0),d2
-	sub.w	4(a1),d2
-	move.w	d2,d1
-	add.w	d0,d1
-	bmi.s	BuildSprites_P2_NextObj
-	move.w	d2,d1
-	sub.w	d0,d1
-	cmpi.w	#screen_height,d1
-	bge.s	BuildSprites_P2_NextObj
-	addi.w	#spriteScreenPositionY2P(screen_height),d2
-	bra.s	BuildSprites_P2_DrawSprite
-; ===========================================================================
-; loc_16B14:
-BuildSprites_P2_ScreenSpaceObj:
-	move.w	y_pixel(a0),d2
-	move.w	x_pixel(a0),d3
-	addi.w	#spriteScreenPositionY2P(screen_height)-spriteScreenPositionY(0),d2 ; Rebase from 1p to 2p coordinate space
-	bra.s	BuildSprites_P2_DrawSprite
-; ===========================================================================
-; loc_16B22:
-BuildSprites_P2_ApproxYCheck:
-	move.w	y_pos(a0),d2
-	sub.w	4(a1),d2
-	addi.w	#spriteScreenPositionY(0),d2
-	cmpi.w	#spriteScreenPositionY(0-32),d2
-	blo.s	BuildSprites_P2_NextObj
-	cmpi.w	#spriteScreenPositionY(screen_height+32),d2
-	bhs.s	BuildSprites_P2_NextObj
-	addi.w	#spriteScreenPositionY2P(screen_height)-spriteScreenPositionY(0),d2 ; Rebase from 1p to 2p coordinate space
-; loc_16B3E:
-BuildSprites_P2_DrawSprite:
-	movea.l	mappings(a0),a1
-	moveq	#0,d1
-	btst	#render_flags.static_mappings,d4
-	bne.s	+
-	move.b	mapping_frame(a0),d1
-	add.w	d1,d1
-	adda.w	(a1,d1.w),a1
-	move.w	(a1)+,d1
-	subq.w	#1,d1
-	bmi.s	++
-+
-	bsr.w	DrawSprite_2P
-+
-	ori.b	#1<<render_flags.on_screen,render_flags(a0)
-; loc_16B64:
-BuildSprites_P2_NextObj:
-	addq.w	#2,d6
-	subq.w	#2,(sp)
-	bne.w	BuildSprites_P2_ObjLoop
-	addq.w	#2,sp
-	tst.b	(Teleport_flag).w
-	bne.s	BuildSprites_P2_NextLevel
-	move.w	#0,(a4)
-; loc_16B78:
-BuildSprites_P2_NextLevel:
-	lea	object_display_list_size(a4),a4
-	dbf	d7,BuildSprites_P2_LevelLoop
-
-    if fixBugs
-	; The new sprite tables are complete: signal a page flip to
-	; allow them to be uploaded to the VDP!
-	st.b	(Sprite_table_page_flip_pending).w
-    endif
-
-	move.b	d5,(Sprite_count).w
-	; Terminate the sprite list.
-	; If the sprite list is full, then set the link field of the last
-	; entry to 0. Otherwise, push the next sprite offscreen and set its
-	; link field to 0. You might be thinking why this doesn't just do the
-	; first one no matter what. Well, think about what if the sprite list
-	; was empty: then it would access data before the start of the list.
-	cmpi.b	#80,d5
-	beq.s	+
-	move.l	#0,(a2)
-	rts
-+
-	move.b	#0,-5(a2)
-	rts
-; ===========================================================================
-; loc_16B9A:
-BuildSprites_P1_MultiDraw:
-	move.l	a4,-(sp)
-	lea	(Camera_X_pos).w,a4
-	movea.w	art_tile(a0),a3
-	movea.l	mappings(a0),a5
-	moveq	#0,d0
-	move.b	mainspr_width(a0),d0
-	move.w	x_pos(a0),d3
-	sub.w	(a4),d3
-	move.w	d3,d1
-	add.w	d0,d1
-	bmi.w	BuildSprites_P1_MultiDraw_NextObj
-	move.w	d3,d1
-	sub.w	d0,d1
-	cmpi.w	#screen_width,d1
-	bge.w	BuildSprites_P1_MultiDraw_NextObj
-	addi.w	#spriteScreenPositionX(0),d3
-	btst	#4,d4
-	beq.s	+
-	moveq	#0,d0
-	move.b	mainspr_height(a0),d0
-	move.w	y_pos(a0),d2
-	sub.w	4(a4),d2
-	move.w	d2,d1
-	add.w	d0,d1
-	bmi.w	BuildSprites_P1_MultiDraw_NextObj
-	move.w	d2,d1
-	sub.w	d0,d1
-	cmpi.w	#screen_height,d1
-	bge.w	BuildSprites_P1_MultiDraw_NextObj
-	addi.w	#spriteScreenPositionY2P(0),d2
-	bra.s	++
-+
-	move.w	y_pos(a0),d2
-	sub.w	4(a4),d2
-	addi.w	#spriteScreenPositionY(0),d2
-	cmpi.w	#spriteScreenPositionY(0-32),d2
-	blo.s	BuildSprites_P1_MultiDraw_NextObj
-	cmpi.w	#spriteScreenPositionY(screen_height+32),d2
-	bhs.s	BuildSprites_P1_MultiDraw_NextObj
-	addi.w	#spriteScreenPositionY2P(0)-spriteScreenPositionY(0),d2 ; Rebase from 1p to 2p coordinate space
-+
-	moveq	#0,d1
-	move.b	mainspr_mapframe(a0),d1
-	beq.s	+
-	add.w	d1,d1
-	movea.l	a5,a1
-	adda.w	(a1,d1.w),a1
-	move.w	(a1)+,d1
-	subq.w	#1,d1
-	bmi.s	+
-	move.w	d4,-(sp)
-	bsr.w	ChkDrawSprite_2P
-	move.w	(sp)+,d4
-+
-	ori.b	#1<<render_flags.on_screen,render_flags(a0)
-	lea	subspr_data(a0),a6
-	moveq	#0,d0
-	move.b	mainspr_childsprites(a0),d0
-	subq.w	#1,d0
-	bcs.s	BuildSprites_P1_MultiDraw_NextObj
-
--	swap	d0
-	move.w	(a6)+,d3
-	sub.w	(a4),d3
-	addi.w	#spriteScreenPositionX(0),d3
-	move.w	(a6)+,d2
-	sub.w	4(a4),d2
-	addi.w	#spriteScreenPositionY2P(0),d2
-	addq.w	#1,a6
-	moveq	#0,d1
-	move.b	(a6)+,d1
-	add.w	d1,d1
-	movea.l	a5,a1
-	adda.w	(a1,d1.w),a1
-	move.w	(a1)+,d1
-	subq.w	#1,d1
-	bmi.s	+
-	move.w	d4,-(sp)
-	bsr.w	ChkDrawSprite_2P
-	move.w	(sp)+,d4
-+
-	swap	d0
-	dbf	d0,-
-; loc_16C7E:
-BuildSprites_P1_MultiDraw_NextObj:
-	movea.l	(sp)+,a4
-	bra.w	BuildSprites_P1_NextObj
-; ===========================================================================
-; loc_16C84:
-BuildSprites_P2_MultiDraw:
-	move.l	a4,-(sp)
-	lea	(Camera_X_pos_P2).w,a4
-	movea.w	art_tile(a0),a3
-	movea.l	mappings(a0),a5
-	moveq	#0,d0
-	move.b	mainspr_width(a0),d0
-	move.w	x_pos(a0),d3
-	sub.w	(a4),d3
-	move.w	d3,d1
-	add.w	d0,d1
-	bmi.w	BuildSprites_P2_MultiDraw_NextObj
-	move.w	d3,d1
-	sub.w	d0,d1
-	cmpi.w	#screen_width,d1
-	bge.w	BuildSprites_P2_MultiDraw_NextObj
-	addi.w	#spriteScreenPositionX(0),d3
-	btst	#4,d4
-	beq.s	+
-	moveq	#0,d0
-	move.b	mainspr_height(a0),d0
-	move.w	y_pos(a0),d2
-	sub.w	4(a4),d2
-	move.w	d2,d1
-	add.w	d0,d1
-	bmi.w	BuildSprites_P2_MultiDraw_NextObj
-	move.w	d2,d1
-	sub.w	d0,d1
-	cmpi.w	#screen_height,d1
-	bge.w	BuildSprites_P2_MultiDraw_NextObj
-	addi.w	#spriteScreenPositionY2P(screen_height),d2
-	bra.s	++
-+
-	move.w	y_pos(a0),d2
-	sub.w	4(a4),d2
-	addi.w	#spriteScreenPositionY(0),d2
-	cmpi.w	#spriteScreenPositionY(0-32),d2
-	blo.s	BuildSprites_P2_MultiDraw_NextObj
-	cmpi.w	#spriteScreenPositionY(screen_height+32),d2
-	bhs.s	BuildSprites_P2_MultiDraw_NextObj
-	addi.w	#spriteScreenPositionY2P(screen_height)-spriteScreenPositionY(0),d2 ; Rebase from 1p to 2p coordinate space
-+
-	moveq	#0,d1
-	move.b	mainspr_mapframe(a0),d1
-	beq.s	+
-	add.w	d1,d1
-	movea.l	a5,a1
-	adda.w	(a1,d1.w),a1
-	move.w	(a1)+,d1
-	subq.w	#1,d1
-	bmi.s	+
-	move.w	d4,-(sp)
-	bsr.w	ChkDrawSprite_2P
-	move.w	(sp)+,d4
-+
-	ori.b	#1<<render_flags.on_screen,render_flags(a0)
-	lea	subspr_data(a0),a6
-	moveq	#0,d0
-	move.b	mainspr_childsprites(a0),d0
-	subq.w	#1,d0
-	bcs.s	BuildSprites_P2_MultiDraw_NextObj
-
--	swap	d0
-	move.w	(a6)+,d3
-	sub.w	(a4),d3
-	addi.w	#spriteScreenPositionX(0),d3
-	move.w	(a6)+,d2
-	sub.w	4(a4),d2
-	addi.w	#spriteScreenPositionY2P(screen_height),d2
-	addq.w	#1,a6
-	moveq	#0,d1
-	move.b	(a6)+,d1
-	add.w	d1,d1
-	movea.l	a5,a1
-	adda.w	(a1,d1.w),a1
-	move.w	(a1)+,d1
-	subq.w	#1,d1
-	bmi.s	+
-	move.w	d4,-(sp)
-	bsr.w	ChkDrawSprite_2P
-	move.w	(sp)+,d4
-+
-	swap	d0
-	dbf	d0,-
-; loc_16D68:
-BuildSprites_P2_MultiDraw_NextObj:
-	movea.l	(sp)+,a4
-	bra.w	BuildSprites_P2_NextObj
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-; adjust art pointer of object at a0 for 2-player mode
-; sub_16D6E:
-Adjust2PArtPointer:
-	tst.w	(Two_player_mode).w
-	beq.s	.return
-	move.w	art_tile(a0),d0
-	andi.w	#tile_mask,d0
-	lsr.w	#1,d0
-	andi.w	#nontile_mask,art_tile(a0)
-	add.w	d0,art_tile(a0)
-
-.return:
-	rts
-; End of function Adjust2PArtPointer
-
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-; adjust art pointer of object at a1 for 2-player mode
-; sub_16D8A:
-Adjust2PArtPointer2:
-	tst.w	(Two_player_mode).w
-	beq.s	.return
-	move.w	art_tile(a1),d0
-	andi.w	#tile_mask,d0
-	lsr.w	#1,d0
-	andi.w	#nontile_mask,art_tile(a1)
-	add.w	d0,art_tile(a1)
-
-.return:
-	rts
-; End of function Adjust2PArtPointer2
-
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-    if ~~fixBugs
-	; This check has been moved, so it is redundant.
-	; See the bugfix under 'DrawSprite_Loop'.
-; sub_16DA6:
-ChkDrawSprite_2P:
-	; This branch skips the X-flip and Y-flip checks, causing
-	; multi-sprite objects to not properly mirror in two player mode.
-	; An easy place to see this is Mystic Case Zone: the Crawltons
-	; badnik's body segments will always face in one direction, and only
-	; the head will be properly flipped.
-	cmpi.b	#80,d5
-	blo.s	DrawSprite_2P_Loop
-	rts
-; End of function ChkDrawSprite_2P
-    endif
 
 ; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
 
@@ -31538,7 +28463,7 @@ ChkPartiallyVisible:
 	rts
 ; ===========================================================================
 
-	jmpTos JmpTo_BuildHUD,JmpTo_BuildHUD_P1,JmpTo_BuildHUD_P2
+	jmpTos JmpTo_BuildHUD
 
 
 
@@ -31645,47 +28570,6 @@ RingsManager_Main:
 	cmp.w	-4(a2),d4
 	bls.s	-
 	move.w	a2,(Ring_end_addr).w	; update end address
-	tst.w	(Two_player_mode).w	; are we in 2P mode?
-	bne.s	+	; if we are, update P2 addresses
-	move.w	a1,(Ring_start_addr_P2).w	; otherwise, copy over P1 addresses
-	move.w	a2,(Ring_end_addr_P2).w
-	rts
-+
-	; update ring start and end addresses for P2
-	movea.w	(Ring_start_addr_P2).w,a1
-	move.w	(Camera_X_pos_P2).w,d4
-	subq.w	#8,d4
-	bhi.s	+
-	moveq	#1,d4
-	bra.s	+
--
-	lea	6(a1),a1
-+
-	cmp.w	2(a1),d4
-	bhi.s	-
-	bra.s	+
--
-	subq.w	#6,a1
-+
-	cmp.w	-4(a1),d4
-	bls.s	-
-	move.w	a1,(Ring_start_addr_P2).w	; update start address
-
-	movea.w	(Ring_end_addr_P2).w,a2
-	addi.w	#screen_width+16,d4
-	bra.s	+
--
-	lea	6(a2),a2
-+
-	cmp.w	2(a2),d4
-	bhi.s	-
-	bra.s	+
--
-	subq.w	#6,a2
-+
-	cmp.w	-4(a2),d4
-	bls.s	-
-	move.w	a2,(Ring_end_addr_P2).w		; update end address
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -31698,11 +28582,6 @@ RingsManager_Main:
 Touch_Rings:
 	movea.w	(Ring_start_addr).w,a1
 	movea.w	(Ring_end_addr).w,a2
-	cmpa.w	#MainCharacter,a0
-	beq.s	+
-	movea.w	(Ring_start_addr_P2).w,a1
-	movea.w	(Ring_end_addr_P2).w,a2
-+
 	cmpa.l	a1,a2	; are there no rings in this area?
 	beq.w	Touch_Rings_Done	; if so, return
 	cmpi.w	#$5A,invulnerable_time(a0)
@@ -31776,9 +28655,7 @@ Touch_Rings_Done:
 ; loc_17168:
 Touch_ConsumeRing:
 	subq.w	#1,(Perfect_rings_left).w
-	cmpa.w	#MainCharacter,a0	; who collected the ring?
-	beq.w	CollectRing_Sonic	; if it was Sonic, branch here
-	bra.w	CollectRing_Tails	; if it was Tails, branch here
+	bra.w	CollectRing_Sonic	; if it was Sonic, branch here
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to draw on-screen rings
@@ -31849,130 +28726,6 @@ BuildRings_NextRing:
 	cmpa.l	a0,a4
 	bne.w	BuildRings_Loop
 	rts
-
-; ---------------------------------------------------------------------------
-; Subroutine to draw on-screen rings for player 1 in a 2P versus game
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-; loc_171F8:
-BuildRings_P1:
-	lea	(Camera_X_pos).w,a3
-    if fixBugs
-	move.w	#spriteScreenPositionY2P(-8),d6
-    else
-	; See the below bugfixes.
-	move.w	#spriteScreenPositionY(-8),d6
-    endif
-	movea.w	(Ring_start_addr).w,a0
-	movea.w	(Ring_end_addr).w,a4
-	cmpa.l	a0,a4	; are there rings on-screen?
-	bne.s	BuildRings_2P_Loop	; if there are, draw them
-	rts	; otherwise, return
-
-; ---------------------------------------------------------------------------
-; Subroutine to draw on-screen rings for player 2 in a 2P versus game
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-; loc_1720E:
-BuildRings_P2:
-	lea	(Camera_X_pos_P2).w,a3
-    if fixBugs
-	move.w	#spriteScreenPositionY2P(screen_height-8),d6
-    else
-	; See the below bugfixes.
-	move.w	#spriteScreenPositionY(screen_height-8),d6
-    endif
-	movea.w	(Ring_start_addr_P2).w,a0
-	movea.w	(Ring_end_addr_P2).w,a4
-	cmpa.l	a0,a4	; are there rings on-screen?
-	bne.s	BuildRings_2P_Loop	; if there are, draw them
-	rts	; otherwise, return
-; ===========================================================================
-; loc_17224:
-BuildRings_2P_Loop:
-	tst.w	(a0)		; has this ring been consumed?
-	bmi.w	BuildRings_2P_NextRing	; if it has, branch
-	move.w	2(a0),d3	; get ring X pos
-	sub.w	(a3),d3		; subtract camera X pos
-	addi.w	#spriteScreenPositionX(0),d3
-	move.w	4(a0),d2	; get ring Y pos
-	sub.w	4(a3),d2	; subtract camera Y pos
-    if fixBugs
-	addq.w	#8,d2
-	andi.w	#$7FF,d2
-    else
-	; Note that this 'andi' occurs *before* an 'addi'. This can cause
-	; 'd2' to wrap incorrectly. This defect is the reason why rings disappear
-	; when they go halfway off the top of the screen. To fix this, simply
-	; swap these two instructions around.
-	andi.w	#$7FF,d2
-	addi.w	#spriteScreenPositionY(8),d2
-    endif
-	; This line is completely redundant: an apparent leftover from one of the
-	; prototypes, back when the above 'andi' didn't exist. S3K gets rid of this.
-	bmi.s	BuildRings_2P_NextRing
-    if fixBugs
-	cmpi.w	#screen_height+8*2,d2
-    else
-	; Fixing the above bug exposes another issue: this instruction and
-	; the above 'addi' should not have 128 added to their values. Instead,
-	; 128 should be added to the values assigned to 'd6' in 'BuildRings_P1'
-	; and 'BuildRings_P2'. The reason that this is a problem is because it
-	; extends the vertical range in which rings are not culled, creating a
-	; 128 line region above the top of the screen where the rings are
-	; off-screen, but not culled.
-	cmpi.w	#spriteScreenPositionY(screen_height+8*2),d2
-    endif
-
-	; The above 'andi' means that this could just be a plain 'bhs'. S3K does this.
-	bge.s	BuildRings_2P_NextRing
-	add.w	d6,d2		; add base Y pos
-	lea	(MapUnc_Rings).l,a1
-	moveq	#0,d1
-	move.b	1(a0),d1	; use ring-specific frame
-	bne.s	+		; if there is one
-	move.b	(Rings_anim_frame).w,d1	; otherwise use global frame
-+
-	add.w	d1,d1
-	adda.w	(a1,d1.w),a1
-	move.b	(a1)+,d0
-	ext.w	d0
-	add.w	d2,d0
-	move.w	d0,(a2)+	; set Y pos
-	move.b	(a1)+,d4
-	move.b	SpriteSizes_2P_3(pc,d4.w),(a2)+	; set size
-	addq.b	#1,d5
-	move.b	d5,(a2)+	; set link field
-	addq.w	#2,a1
-	move.w	(a1)+,d0
-	addi.w	#make_art_tile_2p(ArtTile_ArtNem_Ring,1,0),d0
-	move.w	d0,(a2)+	; set art tile and flags
-	move.w	(a1)+,d0
-	add.w	d3,d0
-	move.w	d0,(a2)+	; set X pos
-
-BuildRings_2P_NextRing:
-	lea	6(a0),a0	; load next ring
-	cmpa.l	a0,a4		; are there any rings left?
-	bne.w	BuildRings_2P_Loop	; if there are, loop
-	rts
-; ===========================================================================
-; cells are double the height in 2P mode, so halve the number of rows
-
-; byte_17294:
-SpriteSizes_2P_3:
-	dc.b   0,0	; 1
-	dc.b   1,1	; 3
-	dc.b   4,4	; 5
-	dc.b   5,5	; 7
-	dc.b   8,8	; 9
-	dc.b   9,9	; 11
-	dc.b  $C,$C	; 13
-	dc.b  $D,$D	; 15
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to perform initial rings manager setup
@@ -32215,61 +28968,12 @@ SpecialCNZBumpers_Main:
 	cmp.w	prev_bumper_x(a2),d4
 	bls.s	-
 	move.l	a2,(CNZ_Visible_bumpers_end).w
-	tst.w	(Two_player_mode).w
-	bne.s	+
-	move.l	a1,(CNZ_Visible_bumpers_start_P2).w
-	move.l	a2,(CNZ_Visible_bumpers_end_P2).w
-	rts
-; ===========================================================================
-+
-	movea.l	(CNZ_Visible_bumpers_start_P2).w,a1
-	move.w	(Camera_X_pos_P2).w,d4
-	subq.w	#8,d4
-	bhi.s	+
-	moveq	#1,d4
-	bra.s	+
-; ===========================================================================
--
-	lea	next_bumper(a1),a1
-+
-	cmp.w	bumper_x(a1),d4
-	bhi.s	-
-	bra.s	+
-; ===========================================================================
--
-	subq.w	#next_bumper,a1
-+
-	cmp.w	prev_bumper_x(a1),d4
-	bls.s	-
-	move.l	a1,(CNZ_Visible_bumpers_start_P2).w
-	movea.l	(CNZ_Visible_bumpers_end_P2).w,a2
-	addi.w	#$150,d4
-	bra.s	+
-; ===========================================================================
--
-	lea	next_bumper(a2),a2
-+
-	cmp.w	bumper_x(a2),d4
-	bhi.s	-
-	bra.s	+
-; ===========================================================================
--
-	subq.w	#next_bumper,a2
-+
-	cmp.w	prev_bumper_x(a2),d4
-	bls.s	-
-	move.l	a2,(CNZ_Visible_bumpers_end_P2).w
 	rts
 ; ===========================================================================
 
 Check_CNZ_bumpers:
 	movea.l	(CNZ_Visible_bumpers_start).w,a1
 	movea.l	(CNZ_Visible_bumpers_end).w,a2
-	cmpa.w	#MainCharacter,a0
-	beq.s	+
-	movea.l	(CNZ_Visible_bumpers_start_P2).w,a1
-	movea.l	(CNZ_Visible_bumpers_end_P2).w,a2
-+
 	cmpa.l	a1,a2
 	beq.w	return_17578
 	move.w	x_pos(a0),d2
@@ -32695,7 +29399,6 @@ ObjectsManager:
 ObjectsManager_States: offsetTable
 	offsetTableEntry.w ObjectsManager_Init		; 0
 	offsetTableEntry.w ObjectsManager_Main		; 2
-	offsetTableEntry.w ObjectsManager_2P_Main	; 4
 ; ===========================================================================
 ; loc_17AB8
 ObjectsManager_Init:
@@ -32706,15 +29409,6 @@ ObjectsManager_Init:
 	lea	(Off_Objects).l,a0	; Next, we load the first pointer in the object layout list pointer index,
 	movea.l	a0,a1			; then copy it for quicker use later.
 	adda.w	(a0,d0.w),a0		; (Point1 * 2) + $003E
-	tst.w	(Two_player_mode).w	; skip if not in 2-player vs mode
-	beq.s	+
-	cmpi.b	#casino_night_zone,(Current_Zone).w	; skip if not Casino Night Zone
-	bne.s	+
-	lea	(Objects_CNZ1_2P).l,a0	; CNZ 1 2-player object layout
-	tst.b	(Current_Act).w		; skip if not past act 1
-	beq.s	+
-	lea	(Objects_CNZ2_2P).l,a0	; CNZ 2 2-player object layout
-+
 	; initialize each object load address with the first object in the layout
 	move.l	a0,(Obj_load_addr_right).w
 	move.l	a0,(Obj_load_addr_left).w
@@ -32786,13 +29480,7 @@ loc_17B3E:
 
 loc_17B62:
 	move.l	a0,(Obj_load_addr_left).w	; remember current object from the left
-	move.l	a0,(Obj_load_addr_left_P2).w
 	move.w	#-1,(Camera_X_pos_last).w	; make sure ObjectsManager_GoingForward is run
-	move.w	#-1,(Camera_X_pos_last_P2).w
-	tst.w	(Two_player_mode).w	; is it two player mode?
-	beq.s	ObjectsManager_Main	; if not, branch
-	addq.b	#2,(Obj_placement_routine).w
-	bra.w	ObjectsManager_2P_Init
 ; ---------------------------------------------------------------------------
 ; loc_17B84
 ObjectsManager_Main:
@@ -32906,446 +29594,6 @@ ObjectsManager_GoingForward:
 
 ObjectsManager_SameXRange:
 	rts
-; ---------------------------------------------------------------------------
-; loc_17C50
-ObjectsManager_2P_Init:
-	; Reset all of the 2P object manager variables to $FF.
-	moveq	#-1,d0
-
-	; Some code to generate an unrolled loop of instructions which clear
-	; the 2P object manager variables.
-.c := 0
-    rept (Object_manager_2P_RAM_End-Object_manager_2P_RAM)/4
-	move.l	d0,(Object_manager_2P_RAM+.c).w
-.c := .c+4
-    endm
-
-    if (Object_manager_2P_RAM_End-Object_manager_2P_RAM)&2
-	move.w	d0,(Object_manager_2P_RAM+.c).w
-.c := .c+2
-    endif
-
-    if (Object_manager_2P_RAM_End-Object_manager_2P_RAM)&1
-	move.b	d0,(Object_manager_2P_RAM+.c).w
-    endif
-
-	move.w	#0,(Camera_X_pos_last).w
-	move.w	#0,(Camera_X_pos_last_P2).w
-	lea	(Obj_respawn_index).w,a2
-	move.w	(a2),(Obj_respawn_index_P2).w	; mirrior first two bytes (respawn indices) for player 2(?)
-	moveq	#0,d2
-	; run initialization for player 1
-	lea	(Obj_respawn_index).w,a5
-	lea	(Object_Manager_Addresses).w,a4
-	lea	(Player_1_loaded_object_blocks).w,a1	; = -1, -1, -1
-	lea	(Player_2_loaded_object_blocks).w,a6	; = -1, -1, -1
-	moveq	#-2,d6
-	bsr.w	ObjMan2P_GoingForward
-	lea	(Player_1_loaded_object_blocks).w,a1
-	moveq	#-1,d6
-	bsr.w	ObjMan2P_GoingForward
-	lea	(Player_1_loaded_object_blocks).w,a1
-	moveq	#0,d6
-	bsr.w	ObjMan2P_GoingForward
-	; run initialization for player 2
-	lea	(Obj_respawn_index_P2).w,a5
-	lea	(Object_Manager_Addresses_P2).w,a4
-	lea	(Player_2_loaded_object_blocks).w,a1
-	lea	(Player_1_loaded_object_blocks).w,a6
-	moveq	#-2,d6
-	bsr.w	ObjMan2P_GoingForward
-	lea	(Player_2_loaded_object_blocks).w,a1
-	moveq	#-1,d6
-	bsr.w	ObjMan2P_GoingForward
-	lea	(Player_2_loaded_object_blocks).w,a1
-	moveq	#0,d6
-	bsr.w	ObjMan2P_GoingForward
-
-; loc_17CCC
-ObjectsManager_2P_Main:
-	move.w	(Camera_X_pos).w,d1
-	andi.w	#$FF00,d1
-	move.w	d1,(Camera_X_pos_coarse).w
-
-	move.w	(Camera_X_pos_P2).w,d1
-	andi.w	#$FF00,d1
-	move.w	d1,(Camera_X_pos_coarse_P2).w
-
-	move.b	(Camera_X_pos).w,d6	; get upper byte of camera positon
-	andi.w	#$FF,d6
-	move.w	(Camera_X_pos_last).w,d0
-	cmp.w	(Camera_X_pos_last).w,d6	; is the X range the same as last time?
-	beq.s	+				; if yes, branch
-	move.w	d6,(Camera_X_pos_last).w	; remember current position for next time
-	lea	(Obj_respawn_index).w,a5
-	lea	(Object_Manager_Addresses).w,a4
-	lea	(Player_1_loaded_object_blocks).w,a1
-	lea	(Player_2_loaded_object_blocks).w,a6
-	bsr.s	ObjectsManager_2P_Run
-+
-	move.b	(Camera_X_pos_P2).w,d6	; get upper byte of camera positon
-	andi.w	#$FF,d6
-	move.w	(Camera_X_pos_last_P2).w,d0
-	cmp.w	(Camera_X_pos_last_P2).w,d6	; is the X range the same as last time?
-	beq.s	return_17D34			; if yes, branch (rts)
-	move.w	d6,(Camera_X_pos_last_P2).w
-	lea	(Obj_respawn_index_P2).w,a5
-	lea	(Object_Manager_Addresses_P2).w,a4
-	lea	(Player_2_loaded_object_blocks).w,a1
-	lea	(Player_1_loaded_object_blocks).w,a6
-	bsr.s	ObjectsManager_2P_Run
-
-return_17D34:
-	rts
-; ===========================================================================
-
-ObjectsManager_2P_Run:
-	lea	(Obj_respawn_index).w,a2
-	moveq	#0,d2
-	cmp.w	d0,d6				; is the X range the same as last time?
-	beq.w	ObjectsManager_SameXRange	; if yes, branch (rts)
-	bge.w	ObjMan2P_GoingForward	; if new pos is greater than old pos, branch
-	; if the player is moving back
-
-;ObjMan2P_GoingBackward:
-	; Slide the object block indices to the right, and insert the new object block at the left.
-	move.b	2(a1),d2
-	move.b	1(a1),2(a1)
-	move.b	(a1),1(a1)
-	move.b	d6,(a1)
-	; d2 now hold the index of the object block to be unloaded, which was pushed out of the right side.
-
-	; Check if the other player has the to-be-unloaded object block loaded.
-	cmp.b	(a6),d2
-	beq.s	.blockNeededByOtherPlayer
-	cmp.b	1(a6),d2
-	beq.s	.blockNeededByOtherPlayer
-	cmp.b	2(a6),d2
-	beq.s	.blockNeededByOtherPlayer
-	; If the other player does not have this object block loaded, then we're free to unload it.
-	bsr.w	ObjectsManager_2P_UnloadObjectBlock
-	bra.s	.haveEmptyObjectBlock
-; ---------------------------------------------------------------------------
-
-.blockNeededByOtherPlayer:
-	bsr.w	ObjectsManager_2P_FindEmptyObjectBlock
-; loc_17D70:
-.haveEmptyObjectBlock:
-	bsr.w	ObjectsManager_2P_IsObjectBlockAlreadyLoaded
-	bne.s	.blockNotAlreadyLoaded
-
-	; Block is already loaded: just update the pointer and respawn index without actually loading anything.
-	movea.l	4(a4),a0
-
-.nextObject1:
-	cmp.b	-6(a0),d6	; is the previous object's X pos less than d6?
-	bne.s	.done1		; if it is, branch
-	tst.b	-4(a0)		; does the previous object get a respawn table entry?
-	bpl.s	.noRespawn1	; if not, branch
-	subq.b	#1,1(a5)	; respawn index of next object to the left
-.noRespawn1:
-	subq.w	#6,a0
-	bra.s	.nextObject1	; continue with previous object
-; ---------------------------------------------------------------------------
-; loc_17D8E:
-.done1:
-	move.l	a0,4(a4)	; remember next object from the right
-
-	bra.s	.unloadObjects
-; ---------------------------------------------------------------------------
-; loc_17D94:
-.blockNotAlreadyLoaded:
-	; Block is not already loaded: load all of the objects in the block.
-	movea.l	4(a4),a0
-
-	; Mark object block as occupied.
-	move.b	d6,(a1)
-
-.nextObject2:
-	; load all objects left of the screen that are now in range
-	cmp.b	-6(a0),d6	; is the previous object's X pos less than d6?
-	bne.s	.done2		; if it is, branch
-	subq.w	#6,a0		; get object's address
-	tst.b	2(a0)		; does the object get a respawn table entry?
-	bpl.s	.noRespawn2	; if not, branch
-	subq.b	#1,1(a5)	; respawn index of this object
-	move.b	1(a5),d2
-.noRespawn2:
-	bsr.w	ChkLoadObj_2P	; load object
-	bne.s	.fullSST	; branch, if SST is full
-	subq.w	#6,a0
-	bra.s	.nextObject2	; continue with previous object
-; ---------------------------------------------------------------------------
-; loc_17DBA:
-.fullSST:
-	; undo a few things, if the object couldn't load
-	tst.b	2(a0)		; does the object get a respawn table entry?
-	bpl.s	.noRespawn4	; if not, branch
-	addq.b	#1,1(a5)	; since we didn't load the object, undo last change
-.noRespawn4:
-	addq.w	#6,a0		; go back to last object
-; loc_17DC6:
-.done2:
-	move.l	a0,4(a4)	; remember current object from the left
-; loc_17DCA:
-.unloadObjects:
-	movea.l	(a4),a0		; get next object from the right
-	addq.w	#3,d6		; look two chunks beyond the right edge of the screen
-
-.nextObject3:
-	; subtract number of objects that have been moved out of range (from the right side)
-	cmp.b	-6(a0),d6	; is the previous object's X pos less than d6?
-	bne.s	.done3		; if it is, branch
-	tst.b	-4(a0)		; does the previous object get a respawn table entry?
-	bpl.s	.noRespawn3	; if not, branch
-	subq.b	#1,(a5)		; respawn index of next object to the left
-.noRespawn3:
-	subq.w	#6,a0
-	bra.s	.nextObject3	; continue with previous object
-; ---------------------------------------------------------------------------
-; loc_17DE0:
-.done3:
-	move.l	a0,(a4)		; remember next object from the right
-	rts
-; ===========================================================================
-;loc_17DE4:
-ObjMan2P_GoingForward:
-	addq.w	#2,d6		; look forward two chunks
-
-	; Slide the object block indices to the left, and insert the new object block at the right.
-	move.b	(a1),d2
-	move.b	1(a1),(a1)
-	move.b	2(a1),1(a1)
-	move.b	d6,2(a1)
-	; d2 now hold the index of the object block to be unloaded, which was pushed out of the right side.
-
-	; Check if the other player has the to-be-unloaded object block loaded.
-	cmp.b	(a6),d2
-	beq.s	.blockNeededByOtherPlayer
-	cmp.b	1(a6),d2
-	beq.s	.blockNeededByOtherPlayer
-	cmp.b	2(a6),d2
-	beq.s	.blockNeededByOtherPlayer
-	; If the other player does not have this object block loaded, then we're free to unload it.
-	bsr.w	ObjectsManager_2P_UnloadObjectBlock
-	bra.s	.haveEmptyObjectBlock
-; ---------------------------------------------------------------------------
-
-.blockNeededByOtherPlayer:
-	bsr.w	ObjectsManager_2P_FindEmptyObjectBlock
-; loc_17E10:
-.haveEmptyObjectBlock:
-	bsr.w	ObjectsManager_2P_IsObjectBlockAlreadyLoaded
-	bne.s	.blockNotAlreadyLoaded
-
-	; Block is already loaded: just update the pointer and respawn index without actually loading anything.
-	movea.l	(a4),a0
-
-.nextObject1:
-	cmp.b	(a0),d6		; is the object's X pos greater than d6?
-	bne.s	.done1		; if it is, branch
-	tst.b	2(a0)		; does the object get a respawn table entry?
-	bpl.s	.noRespawn1	; if not, branch
-	addq.b	#1,(a5)		; respawn index of next object to the right
-.noRespawn1:
-	addq.w	#6,a0
-	bra.s	.nextObject1	; continue with next object
-; ===========================================================================
-; loc_17E28:
-.done1:
-	move.l	a0,(a4)		; remember next object from the right
-
-	bra.s	.unloadObjects
-; ===========================================================================
-; loc_17E2C:
-.blockNotAlreadyLoaded:
-	movea.l	(a4),a0
-	move.b	d6,(a1)
-
-.nextObject2:
-	; load all objects right of the screen that are now in range
-	cmp.b	(a0),d6		; is object's x position >= d6?
-	bne.s	.done2		; if yes, branch
-	tst.b	2(a0)		; does the object get a respawn table entry?
-	bpl.s	.noRespawn2	; if not, branch
-	move.b	(a5),d2		; respawn index of this object
-	addq.b	#1,(a5)		; respawn index of next object to the left
-.noRespawn2:
-	bsr.w	ChkLoadObj_2P	; load object (and get address of next object)
-	beq.s	.nextObject2	; continue loading objects, if the SST isn't full
-; loc_17E44:
-.done2:
-	move.l	a0,(a4)		; remember current object from the right
-; loc_17E46:
-.unloadObjects:
-	movea.l	4(a4),a0	; get next object from the left
-	subq.w	#3,d6		; look one chunk behind the left edge of the screen
-	bcs.s	.done3		; branch, if camera position would be behind level's left boundary
-; loc_17E4E:
-.nextObject3:
-	; subtract number of objects that have been moved out of range (from the left)
-	cmp.b	(a0),d6		; is object's x position >= d6?
-	bne.s	.done3		; if yes, branch
-	tst.b	2(a0)		; does the object get a respawn table entry?
-	bpl.s	.noRespawn3	; if not, branch
-	addq.b	#1,1(a5)	; respawn index of next object to the right
-; loc_17E5C:
-.noRespawn3:
-	addq.w	#6,a0
-	bra.s	.nextObject3	; continue with previous object
-; ---------------------------------------------------------------------------
-; loc_17E60:
-.done3:
-	move.l	a0,4(a4)	; remember current object from the left
-	rts
-
-; ===========================================================================
-;loc_17E66: ObjMan_2P_UnkSub1:
-ObjectsManager_2P_IsObjectBlockAlreadyLoaded:
-	; Preserve 'a1'.
-	move.l	a1,-(sp)
-
-	; 'Object_RAM_block_indices' is a list of blocks which are already loaded.
-	lea	(Object_RAM_block_indices).w,a1
-	; Check index 1.
-	cmp.b	(a1)+,d6
-	beq.s	.blockAlreadyLoaded
-	; Check index 2.
-	cmp.b	(a1)+,d6
-	beq.s	.blockAlreadyLoaded
-	; Check index 3.
-	cmp.b	(a1)+,d6
-	beq.s	.blockAlreadyLoaded
-	; Check index 4.
-	cmp.b	(a1)+,d6
-	beq.s	.blockAlreadyLoaded
-	; Check index 5.
-	cmp.b	(a1)+,d6
-	beq.s	.blockAlreadyLoaded
-	; Check index 6.
-	cmp.b	(a1)+,d6
-	beq.s	.blockAlreadyLoaded
-	; Make it so that a 'bne' instruction after the call to this function will branch.
-	moveq	#1,d0
-
-.blockAlreadyLoaded:
-	; Restore 'a1'.
-	movea.l	(sp)+,a1
-	rts
-; ===========================================================================
-;loc_17E8A: ObjMan_2P_UnkSub2:
-ObjectsManager_2P_FindEmptyObjectBlock:
-	lea	(Object_RAM_block_indices).w,a1
-	; Check block 1.
-	lea	(Dynamic_Object_RAM_2P_End+(12*0)*object_size).w,a3
-	tst.b	(a1)+
-	bmi.s	.foundBlock
-	; Check block 2.
-	lea	(Dynamic_Object_RAM_2P_End+(12*1)*object_size).w,a3
-	tst.b	(a1)+
-	bmi.s	.foundBlock
-	; Check block 3.
-	lea	(Dynamic_Object_RAM_2P_End+(12*2)*object_size).w,a3
-	tst.b	(a1)+
-	bmi.s	.foundBlock
-	; Check block 4.
-	lea	(Dynamic_Object_RAM_2P_End+(12*3)*object_size).w,a3
-	tst.b	(a1)+
-	bmi.s	.foundBlock
-	; Check block 5.
-	lea	(Dynamic_Object_RAM_2P_End+(12*4)*object_size).w,a3
-	tst.b	(a1)+
-	bmi.s	.foundBlock
-	; Check block 6.
-	lea	(Dynamic_Object_RAM_2P_End+(12*5)*object_size).w,a3
-	tst.b	(a1)+
-	bmi.s	.foundBlock
-	; This code should never be reached.
-	nop
-	nop
-
-.foundBlock:
-	; Rewind a little so that 'a1' points to the object block index that we found.
-	subq.w	#1,a1
-	rts
-; ===========================================================================
-; this sub-routine appears to determine which 12-slot block of object RAM
-; corresponds to the current out-of-range camera positon (in d2) and deletes
-; the objects in this block. This most likely takes over the functionality
-; of markObjGone, as that routine isn't called in two player mode.
-;loc_17EC6: ObjectsManager_2P_UnkSub3:
-ObjectsManager_2P_UnloadObjectBlock:
-	; Find which object block holds this object block index.
-	lea	(Object_RAM_block_indices).w,a1
-	; Check block 1.
-	lea	(Dynamic_Object_RAM_2P_End+(12*0)*object_size).w,a3
-	cmp.b	(a1)+,d2
-	beq.s	.foundBlock
-	; Check block 2.
-	lea	(Dynamic_Object_RAM_2P_End+(12*1)*object_size).w,a3
-	cmp.b	(a1)+,d2
-	beq.s	.foundBlock
-	; Check block 3.
-	lea	(Dynamic_Object_RAM_2P_End+(12*2)*object_size).w,a3
-	cmp.b	(a1)+,d2
-	beq.s	.foundBlock
-	; Check block 4.
-	lea	(Dynamic_Object_RAM_2P_End+(12*3)*object_size).w,a3
-	cmp.b	(a1)+,d2
-	beq.s	.foundBlock
-	; Check block 5.
-	lea	(Dynamic_Object_RAM_2P_End+(12*4)*object_size).w,a3
-	cmp.b	(a1)+,d2
-	beq.s	.foundBlock
-	; Check block 6.
-	lea	(Dynamic_Object_RAM_2P_End+(12*5)*object_size).w,a3
-	cmp.b	(a1)+,d2
-	beq.s	.foundBlock
-	; This code should never be reached.
-	nop
-	nop
-
-.foundBlock:
-	; Mark this object block as empty.
-	move.b	#-1,-(a1)
-
-	; Delete all objects in this block.
-	movem.l	a1/a3,-(sp)
-	moveq	#0,d1		; used later to delete objects
-	moveq	#12-1,d2	; The number of objects per block
-
-;loc_17F0A: ObjMan2P_UnkSub3_DeleteBlockLoop:
-.deleteBlockLoop:
-	tst.b	id(a3)
-	beq.s	.skipObject	; branch if slot is empty
-	movea.l	a3,a1
-	moveq	#0,d0
-	move.b	respawn_index(a1),d0	; does object remember its state?
-	beq.s	.doesNotRememberState	; if not, branch
-	bclr	#7,2(a2,d0.w)	; else, clear entry in respawn table
-
-.doesNotRememberState:
-	; inlined DeleteObject2:
-	moveq	#bytesToLcnt(next_object),d0 ; we want to clear up to the next object
-	; note: d1 is already 0
-
-	; delete the object by setting all of its bytes to 0
-.clearObjectLoop:
-	move.l	d1,(a1)+
-	dbf	d0,.clearObjectLoop
-    if object_size&3
-	move.w	d1,(a1)+
-    endif
-
-;loc_17F26: ObjMan2P_UnkSub3_DeleteBlock_SkipObj:
-.skipObject:
-	lea	next_object(a3),a3
-	dbf	d2,.deleteBlockLoop
-
-	moveq	#0,d2
-	movem.l	(sp)+,a1/a3
-
-	rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Subroutine to check if an object needs to be loaded.
@@ -33393,49 +29641,6 @@ ChkLoadObj:
 return_17F7E:
 	rts
 ; ===========================================================================
-;loc_17F80:
-ChkLoadObj_2P:
-	tst.b	2(a0)		; does the object get a respawn table entry?
-	bpl.s	+		; if not, branch
-	bset	#7,2(a2,d2.w)	; mark object as loaded
-	beq.s	+		; branch if it wasn't already loaded
-	addq.w	#6,a0	; next object
-	moveq	#0,d0	; let the objects manager know that it can keep going
-	rts
-; ---------------------------------------------------------------------------
-
-+
-	btst	#4,2(a0)
-	beq.s	+			; if this branch isn't taken, then this object would
-	bsr.w	AllocateObject		; not be loaded into one of the 12 byte blocks after
-	bne.s	return_17FD8		; Dynamic_Object_RAM_2P_End and would most likely end
-	bra.s	ChkLoadObj_2P_LoadData	; up somewhere before this in Dynamic_Object_RAM
-; ---------------------------------------------------------------------------
-
-+
-	bsr.w	AllocateObject_2P	; find empty slot in current 12 object block
-	bne.s	return_17FD8	; branch, if there is no room left in this block
-;loc_17FAA:
-ChkLoadObj_2P_LoadData:
-	move.w	(a0)+,x_pos(a1)
-	move.w	(a0)+,d0	; there are three things stored in this word
-	bpl.s	+		; branch, if the object doesn't get a respawn table entry
-	move.b	d2,respawn_index(a1)
-+
-	move.w	d0,d1		; copy for later
-	andi.w	#$FFF,d0	; get y-position
-	move.w	d0,y_pos(a1)
-	rol.w	#render_flags.y_flip+2,d1	; adjust bits
-	andi.b	#1<<render_flags.x_flip|1<<render_flags.y_flip,d1	; get render flags
-	move.b	d1,render_flags(a1)
-	move.b	d1,status(a1)
-	_move.b	(a0)+,id(a1) ; load obj
-	move.b	(a0)+,subtype(a1)
-	moveq	#0,d0
-
-return_17FD8:
-	rts
-; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Single object loading subroutine
 ; Find an empty object array
@@ -33447,10 +29652,6 @@ return_17FD8:
 AllocateObject:
 	lea	(Dynamic_Object_RAM).w,a1 ; a1=object
 	move.w	#(Dynamic_Object_RAM_End-Dynamic_Object_RAM)/object_size-1,d0 ; search to end of table
-	tst.w	(Two_player_mode).w
-	beq.s	+
-	move.w	#(Dynamic_Object_RAM_2P_End-Dynamic_Object_RAM)/object_size-1,d0 ; search to $BF00 exclusive
-
 /
 	tst.b	id(a1)	; is object RAM slot empty?
 	beq.s	return_17FF8	; if yes, branch
@@ -33539,15 +29740,6 @@ ObjectLayoutBoundary macro
 	; could potentially read past the start of the file and load random
 	; objects.
 	ObjectLayoutBoundary
-    endif
-
-; byte_1802A;
-    if gameRevision=0
-Objects_CNZ1_2P:	BINCLUDE	"level/objects/CNZ_1_2P (REV00).bin"
-    else
-    ; a Crawl badnik was moved slightly further away from a ledge
-    ; 2 flippers were moved closer to a wall
-Objects_CNZ1_2P:	BINCLUDE	"level/objects/CNZ_1_2P.bin"
     endif
 
 	ObjectLayoutBoundary
@@ -86863,265 +83055,9 @@ BuildHUD:
 
 ; ===========================================================================
 
-BuildHUD_P1:
-	tst.w	(Ring_count).w
-	beq.s	BuildHUD_P1_NoRings
-	moveq	#0,d1
-	btst	#3,(Level_frame_counter+1).w
-	bne.s	+
-	cmpi.b	#9,(Timer_minute).w
-	bne.s	+
-	addq.w	#2,d1	; make TIME flash
-+
-	bra.s	BuildHUD_P1_Continued
-; ===========================================================================
-; loc_40876:
-BuildHUD_P1_NoRings:
-	moveq	#0,d1
-	btst	#3,(Level_frame_counter+1).w
-	bne.s	BuildHUD_P1_Continued
-	addq.w	#1,d1	; make RINGS flash
-	cmpi.b	#9,(Timer_minute).w
-	bne.s	BuildHUD_P1_Continued
-	addq.w	#2,d1	; make TIME flash
-; loc_4088C:
-BuildHUD_P1_Continued:
-	move.w	#spriteScreenPositionX(16),d3
-	move.w	#spriteScreenPositionY2P(screen_height/2+24),d2
-	lea	(HUD_MapUnc_40BEA).l,a1
-	movea.w	#make_art_tile_2p(ArtTile_Art_HUD_Text_2P,0,1),a3
-	add.w	d1,d1
-	adda.w	(a1,d1.w),a1
-	move.w	(a1)+,d1
-	subq.w	#1,d1
-	jsrto	JmpTo_DrawSprite_2P_Loop
-	move.w	#spriteScreenPositionX(56),d3
-	move.w	#spriteScreenPositionY2P(screen_height/2-104),d2
-	movea.w	#make_art_tile_2p(ArtTile_Art_HUD_Numbers_2P,0,1),a3
-	moveq	#0,d7
-	move.b	(Timer_minute).w,d7
-	bsr.w	sub_4092E
-	bsr.w	sub_4096A
-	moveq	#0,d7
-	move.b	(Timer_second).w,d7
-	bsr.w	loc_40938
-	move.w	#spriteScreenPositionX(64),d3
-	move.w	#spriteScreenPositionY2P(screen_height/2-88),d2
-	movea.w	#make_art_tile_2p(ArtTile_Art_HUD_Numbers_2P,0,1),a3
-	moveq	#0,d7
-	move.w	(Ring_count).w,d7
-	bsr.w	sub_40984
-	tst.b	(Update_HUD_timer_2P).w
-	bne.s	+
-	tst.b	(Update_HUD_timer).w
-	beq.s	+
-	move.w	#spriteScreenPositionX(144),d3
-	move.w	#spriteScreenPositionY2P(screen_height/2+72),d2
-	movea.w	#make_art_tile_2p(ArtTile_Art_HUD_Numbers_2P,0,1),a3
-	moveq	#0,d7
-	move.b	(Loser_Time_Left).w,d7
-	bsr.w	loc_40938
-+
-	moveq	#4,d1
-	move.w	#spriteScreenPositionX(16),d3
-	move.w	#spriteScreenPositionY2P(screen_height/2+24),d2
-	lea	(HUD_MapUnc_40BEA).l,a1
-	movea.w	#make_art_tile_2p(ArtTile_Art_HUD_Text_2P,0,1),a3
-	add.w	d1,d1
-	adda.w	(a1,d1.w),a1
-	move.w	(a1)+,d1
-	subq.w	#1,d1
-	jsrto	JmpTo_DrawSprite_2P_Loop
-	moveq	#0,d4
-	rts
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_4092E:
-
-	lea	(Hud_1).l,a4
-	moveq	#Hud_1.loop_counter,d6
-	bra.s	loc_40940
-; ===========================================================================
-
-loc_40938:
-
-	lea	(Hud_10).l,a4
-	moveq	#Hud_10.loop_counter,d6
-
-loc_40940:
-
-	moveq	#0,d1
-	move.l	(a4)+,d4
-
-loc_40944:
-	sub.l	d4,d7
-	bcs.s	loc_4094C
-	addq.w	#1,d1
-	bra.s	loc_40944
-; ===========================================================================
-
-loc_4094C:
-	add.l	d4,d7
-	lea	(HUD_MapUnc_40C82).l,a1
-	add.w	d1,d1
-	adda.w	(a1,d1.w),a1
-	move.w	(a1)+,d1
-	subq.w	#1,d1
-	jsrto	JmpTo_DrawSprite_2P_Loop
-	addq.w	#8,d3
-	dbf	d6,loc_40940
-	rts
-; End of function sub_4092E
-
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_4096A:
-
-	moveq	#$A,d1
-	lea	(HUD_MapUnc_40C82).l,a1
-	add.w	d1,d1
-	adda.w	(a1,d1.w),a1
-	move.w	(a1)+,d1
-	subq.w	#1,d1
-	jsrto	JmpTo_DrawSprite_2P_Loop
-	addq.w	#8,d3
-	rts
-; End of function sub_4096A
-
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_40984:
-
-	lea	(Hud_100).l,a4
-	moveq	#Hud_100.loop_counter,d6
-
-loc_4098C:
-	moveq	#0,d1
-	move.l	(a4)+,d4
-
-loc_40990:
-	sub.l	d4,d7
-	bcs.s	loc_40998
-	addq.w	#1,d1
-	bra.s	loc_40990
-; ===========================================================================
-
-loc_40998:
-	add.l	d4,d7
-	tst.w	d6
-	beq.s	loc_409AA
-	tst.w	d1
-	beq.s	loc_409A6
-	bset	#$1F,d6
-
-loc_409A6:
-	tst.l	d6
-	bpl.s	loc_409BE
-
-loc_409AA:
-	lea	(HUD_MapUnc_40C82).l,a1
-	add.w	d1,d1
-	adda.w	(a1,d1.w),a1
-	move.w	(a1)+,d1
-	subq.w	#1,d1
-	jsrto	JmpTo_DrawSprite_2P_Loop
-
-loc_409BE:
-	addq.w	#8,d3
-	dbf	d6,loc_4098C
-	rts
-; End of function sub_40984
-
-; ===========================================================================
-
-BuildHUD_P2:
-	tst.w	(Ring_count_2P).w
-	beq.s	BuildHUD_P2_NoRings
-	moveq	#0,d1
-	btst	#3,(Level_frame_counter+1).w
-	bne.s	+
-	cmpi.b	#9,(Timer_minute_2P).w
-	bne.s	+
-	addq.w	#2,d1
-+
-	bra.s	BuildHUD_P2_Continued
-; ===========================================================================
-; loc_409E2:
-BuildHUD_P2_NoRings:
-	moveq	#0,d1
-	btst	#3,(Level_frame_counter+1).w
-	bne.s	BuildHUD_P2_Continued
-	addq.w	#1,d1
-	cmpi.b	#9,(Timer_minute_2P).w
-	bne.s	BuildHUD_P2_Continued
-	addq.w	#2,d1
-; loc_409F8:
-BuildHUD_P2_Continued:
-	move.w	#spriteScreenPositionX(16),d3
-	move.w	#spriteScreenPositionY2P(screen_height/2+24)+screen_height,d2
-	lea	(HUD_MapUnc_40BEA).l,a1
-	movea.w	#make_art_tile_2p(ArtTile_Art_HUD_Text_2P,0,1),a3
-	add.w	d1,d1
-	adda.w	(a1,d1.w),a1
-	move.w	(a1)+,d1
-	subq.w	#1,d1
-	jsrto	JmpTo_DrawSprite_2P_Loop
-	move.w	#spriteScreenPositionX(56),d3
-	move.w	#spriteScreenPositionY2P(screen_height/2-104)+screen_height,d2
-	movea.w	#make_art_tile_2p(ArtTile_Art_HUD_Numbers_2P,0,1),a3
-	moveq	#0,d7
-	move.b	(Timer_minute_2P).w,d7
-	bsr.w	sub_4092E
-	bsr.w	sub_4096A
-	moveq	#0,d7
-	move.b	(Timer_second_2P).w,d7
-	bsr.w	loc_40938
-	move.w	#spriteScreenPositionX(64),d3
-	move.w	#spriteScreenPositionY2P(screen_height/2-88)+screen_height,d2
-	movea.w	#make_art_tile_2p(ArtTile_Art_HUD_Numbers_2P,0,1),a3
-	moveq	#0,d7
-	move.w	(Ring_count_2P).w,d7
-	bsr.w	sub_40984
-	tst.b	(Update_HUD_timer).w
-	bne.s	+
-	tst.b	(Update_HUD_timer_2P).w
-	beq.s	+
-	move.w	#spriteScreenPositionX(144),d3
-	move.w	#spriteScreenPositionY2P(screen_height/2+72)+screen_height,d2
-	movea.w	#make_art_tile_2p(ArtTile_Art_HUD_Numbers_2P,0,1),a3
-	moveq	#0,d7
-	move.b	(Loser_Time_Left).w,d7
-	bsr.w	loc_40938
-+
-	moveq	#5,d1
-	move.w	#spriteScreenPositionX(16),d3
-	move.w	#spriteScreenPositionY2P(screen_height/2+24)+screen_height,d2
-	lea	(HUD_MapUnc_40BEA).l,a1
-	movea.w	#make_art_tile_2p(ArtTile_ArtNem_Powerups,0,1),a3
-	add.w	d1,d1
-	adda.w	(a1,d1.w),a1
-	move.w	(a1)+,d1
-	subq.w	#1,d1
-	jsrto	JmpTo_DrawSprite_2P_Loop
-	moveq	#0,d4
-	rts
-; ===========================================================================
-
 ; sprite mappings for the HUD
 ; uses the art in VRAM from $D940 - $FC00
 HUD_MapUnc_40A9A:	include "mappings/sprite/hud_a.asm"
-
-
-HUD_MapUnc_40BEA:	include "mappings/sprite/hud_b.asm"
-
-
-HUD_MapUnc_40C82:	include "mappings/sprite/hud_c.asm"
 
 ; ---------------------------------------------------------------------------
 ; Add points subroutine
@@ -87152,41 +83088,6 @@ AddPoints:
 +	rts
 ; End of function AddPoints
 
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-; ---------------------------------------------------------------------------
-; Add points subroutine
-; subroutine to add to Player 2's score
-; (goes to AddPoints to add to Player 1's score instead if this is not Player 2)
-; ---------------------------------------------------------------------------
-
-; sub_40D42:
-AddPoints2:
-	tst.w	(Two_player_mode).w
-	beq.s	AddPoints
-	cmpa.w	#MainCharacter,a3
-	beq.s	AddPoints
-	move.b	#1,(Update_HUD_score_2P).w
-	lea	(Score_2P).w,a3
-	add.l	d0,(a3)	; add d0*10 to the score
-	move.l	#999999,d1
-	cmp.l	(a3),d1	; is #999999 higher than the score?
-	bhi.s	+	; if yes, branch
-	move.l	d1,(a3)	; set score to #999999
-+
-	move.l	(a3),d0
-	cmp.l	(Next_Extra_life_score_2P).w,d0
-	blo.s	+	; rts
-	addi.l	#5000,(Next_Extra_life_score_2P).w
-	addq.b	#1,(Life_count_2P).w
-	addq.b	#1,(Update_HUD_lives_2P).w
-	move.w	#MusID_ExtraLife,d0
-	jmp	(PlayMusic).l
-; ===========================================================================
-+	rts
-; End of function AddPoints2
-
 ; ---------------------------------------------------------------------------
 ; Subroutine to update the HUD
 ; ---------------------------------------------------------------------------
@@ -87197,8 +83098,6 @@ AddPoints2:
 HudUpdate:
 	nop
 	lea	(VDP_data_port).l,a6
-	tst.w	(Two_player_mode).w
-	bne.w	loc_40F50
 	tst.w	(Debug_mode_flag).w	; is debug mode on?
 	bne.w	loc_40E9A	; if yes, branch
 	tst.b	(Update_HUD_score).w	; does the score need updating?
@@ -87353,117 +83252,6 @@ loc_40F18:
 return_40F4E:
 	rts
 ; ===========================================================================
-
-loc_40F50:
-	tst.w	(Game_paused).w
-	bne.w	return_4101A
-	tst.b	(Update_HUD_timer).w
-	beq.s	loc_40F90
-	lea	(Timer).w,a1
-	cmpi.l	#(9<<(8*2))|(59<<(8*1))|(59<<(8*0)),(a1)+
-	beq.w	TimeOver
-	addq.b	#1,-(a1)
-	cmpi.b	#60,(a1)
-	blo.s	loc_40F90
-	move.b	#0,(a1)
-	addq.b	#1,-(a1)
-	cmpi.b	#60,(a1)
-	blo.s	loc_40F90
-	move.b	#0,(a1)
-	addq.b	#1,-(a1)
-	cmpi.b	#9,(a1)
-	blo.s	loc_40F90
-	move.b	#9,(a1)
-
-loc_40F90:
-	tst.b	(Update_HUD_timer_2P).w
-	beq.s	loc_40FC8
-	lea	(Timer_2P).w,a1
-	cmpi.l	#(9<<(8*2))|(59<<(8*1))|(59<<(8*0)),(a1)+
-	beq.w	TimeOver2
-	addq.b	#1,-(a1)
-	cmpi.b	#60,(a1)
-	blo.s	loc_40FC8
-	move.b	#0,(a1)
-	addq.b	#1,-(a1)
-	cmpi.b	#60,(a1)
-	blo.s	loc_40FC8
-	move.b	#0,(a1)
-	addq.b	#1,-(a1)
-	cmpi.b	#9,(a1)
-	blo.s	loc_40FC8
-	move.b	#9,(a1)
-
-loc_40FC8:
-	tst.b	(Update_HUD_lives).w
-	beq.s	loc_40FD6
-	clr.b	(Update_HUD_lives).w
-	bsr.w	Hud_Lives
-
-loc_40FD6:
-	tst.b	(Update_HUD_lives_2P).w
-	beq.s	loc_40FE4
-	clr.b	(Update_HUD_lives_2P).w
-	bsr.w	Hud_Lives2
-
-loc_40FE4:
-	move.b	(Update_HUD_timer).w,d0
-	or.b	(Update_HUD_timer_2P).w,d0
-	beq.s	return_4101A
-	lea	(Loser_Time_Left).w,a1
-	tst.w	(a1)+
-	beq.s	return_4101A
-	subq.b	#1,-(a1)
-	bhi.s	return_4101A
-	move.b	#60,(a1)
-	cmpi.b	#12,-1(a1)
-	bne.s	loc_41010
-	move.w	#MusID_Countdown,d0
-	jsr	(PlayMusic).l
-
-loc_41010:
-	subq.b	#1,-(a1)
-	bcc.s	return_4101A
-	move.w	#0,(a1)
-	bsr.s	TimeOver0
-
-return_4101A:
-
-	rts
-; End of function HudUpdate
-
-
-; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-
-; sub_4101C:
-TimeOver0:
-	tst.b	(Update_HUD_timer).w
-	bne.s	TimeOver
-	tst.b	(Update_HUD_timer_2P).w
-	bne.s	TimeOver2
-	rts
-; ===========================================================================
-; loc_4102A:
-TimeOver:
-	clr.b	(Update_HUD_timer).w
-	lea	(MainCharacter).w,a0 ; a0=character
-	movea.l	a0,a2
-	bsr.w	KillCharacter
-	move.b	#1,(Time_Over_flag).w
-	tst.b	(Update_HUD_timer_2P).w
-	beq.s	+	; rts
-; loc_41044:
-TimeOver2:
-	clr.b	(Update_HUD_timer_2P).w
-	lea	(Sidekick).w,a0 ; a0=character
-	movea.l	a0,a2
-	bsr.w	KillCharacter
-	move.b	#1,(Time_Over_flag_2P).w
-+
-	rts
-; End of function TimeOver0
-
-
 ; ---------------------------------------------------------------------------
 ; Subroutine to initialize ring counter on the HUD
 ; ---------------------------------------------------------------------------
@@ -87488,8 +83276,6 @@ Hud_InitRings:
 Hud_Base:
 	lea	(VDP_data_port).l,a6
 	bsr.w	Hud_Lives
-	tst.w	(Two_player_mode).w
-	bne.s	loc_410BC
 	move.l	#vdpComm(tiles_to_bytes(ArtTile_HUD_Score_E),VRAM,WRITE),(VDP_control_port).l
 	lea	Hud_TilesBase(pc),a2
 	move.w	#(Hud_TilesBase_End-Hud_TilesBase)-1,d2
@@ -87519,15 +83305,6 @@ loc_410B0:
 	dbf	d1,loc_410B0
 	bra.s	loc_410AA
 ; End of function Hud_Base
-
-; ===========================================================================
-
-loc_410BC:
-	bsr.w	Hud_Lives2
-	move.l	#Art_Hud,d1 ; source addreses
-	move.w	#tiles_to_bytes(ArtTile_Art_HUD_Numbers_2P),d2 ; destination VRAM address
-	move.w	#tiles_to_words(22),d3 ; DMA transfer length (in words)
-	jmp	(QueueDMATransfer).l
 ; ===========================================================================
 
 	charset	' ',$FF
@@ -88232,12 +84009,12 @@ dbglistobj macro   obj, mapaddr, subtype, frame, vram
 
 DbgObjList_Def: dbglistheader
 	dbglistobj ObjID_Ring,		Obj25_MapUnc_12382,   0,   0, make_art_tile(ArtTile_ArtNem_Ring,1,0) ; obj25 = ring
-	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   8,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0) ; obj26 = monitor
+	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   4,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0) ; obj26 = monitor
 DbgObjList_Def_End
 
 DbgObjList_EHZ: dbglistheader
 	dbglistobj ObjID_Ring,		Obj25_MapUnc_12382,   0,   0, make_art_tile(ArtTile_ArtNem_Ring,1,0)
-	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   8,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
+	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   4,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
 	dbglistobj ObjID_Starpost,	Obj79_MapUnc_1F424,   1,   0, make_art_tile(ArtTile_ArtNem_Checkpoint,0,0)
 	dbglistobj ObjID_PlaneSwitcher,	Obj03_MapUnc_1FFB8,   9,   1, make_art_tile(ArtTile_ArtNem_Ring,1,0)
     if fixBugs
@@ -88264,7 +84041,7 @@ DbgObjList_EHZ_End
 
 DbgObjList_MTZ: dbglistheader
 	dbglistobj ObjID_Ring,		Obj25_MapUnc_12382,   0,   0, make_art_tile(ArtTile_ArtNem_Ring,1,0)
-	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   8,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
+	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   4,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
 	dbglistobj ObjID_Starpost,	Obj79_MapUnc_1F424,   1,   0, make_art_tile(ArtTile_ArtNem_Checkpoint,0,0)
 	dbglistobj ObjID_PlaneSwitcher,	Obj03_MapUnc_1FFB8,   9,   1, make_art_tile(ArtTile_ArtNem_Ring,1,0)
 	dbglistobj ObjID_SteamSpring,	Obj42_MapUnc_2686C,   1,   7, make_art_tile(ArtTile_ArtKos_LevelArt,3,0)
@@ -88301,7 +84078,7 @@ DbgObjList_MTZ_End
 
 DbgObjList_WFZ: dbglistheader
 	dbglistobj ObjID_Ring,		Obj25_MapUnc_12382,   0,   0, make_art_tile(ArtTile_ArtNem_Ring,1,0)
-	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   8,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
+	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   4,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
 	dbglistobj ObjID_WFZPalSwitcher, Obj03_MapUnc_1FFB8,   0,   0, make_art_tile(ArtTile_ArtNem_Ring,0,0)
 	dbglistobj ObjID_Starpost,	Obj79_MapUnc_1F424,   1,   0, make_art_tile(ArtTile_ArtNem_Checkpoint,0,0)
 	dbglistobj ObjID_Cloud,		ObjB3_MapUnc_3B32C, $5E,   0, make_art_tile(ArtTile_ArtNem_Clouds,2,0)
@@ -88336,7 +84113,7 @@ DbgObjList_WFZ_End
 
 DbgObjList_HTZ: dbglistheader
 	dbglistobj ObjID_Ring,		Obj25_MapUnc_12382,   0,   0, make_art_tile(ArtTile_ArtNem_Ring,1,0)
-	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   8,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
+	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   4,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
 	dbglistobj ObjID_Starpost,	Obj79_MapUnc_1F424,   1,   0, make_art_tile(ArtTile_ArtNem_Checkpoint,0,0)
 	dbglistobj ObjID_ForcedSpin,	Obj03_MapUnc_1FFB8,   0,   0, make_art_tile(ArtTile_ArtNem_Ring,0,0)
 	dbglistobj ObjID_ForcedSpin,	Obj03_MapUnc_1FFB8,   4,   4, make_art_tile(ArtTile_ArtNem_Ring,0,0)
@@ -88370,12 +84147,12 @@ DbgObjList_HTZ_End
 
 DbgObjList_HPZ:; dbglistheader
 ;	dbglistobj ObjID_Ring,		Obj25_MapUnc_12382,   0,   0, make_art_tile(ArtTile_ArtNem_Ring,1,0)
-;	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   8,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
+;	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   4,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
 ;DbgObjList_HPZ_End
 
 DbgObjList_OOZ: dbglistheader
 	dbglistobj ObjID_Ring,		Obj25_MapUnc_12382,   0,   0, make_art_tile(ArtTile_ArtNem_Ring,1,0)
-	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   8,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
+	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   4,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
 	dbglistobj ObjID_Starpost,	Obj79_MapUnc_1F424,   1,   0, make_art_tile(ArtTile_ArtNem_Checkpoint,0,0)
 	dbglistobj ObjID_OOZPoppingPform, Obj33_MapUnc_23DDC,   1,   0, make_art_tile(ArtTile_ArtNem_BurnerLid,3,0)
 	dbglistobj ObjID_SlidingSpike,	Obj43_MapUnc_23FE0,   0,   0, make_art_tile(ArtTile_ArtNem_SpikyThing,2,1)
@@ -88411,7 +84188,7 @@ DbgObjList_OOZ_End
 
 DbgObjList_MCZ: dbglistheader
 	dbglistobj ObjID_Ring,		Obj25_MapUnc_12382,   0,   0, make_art_tile(ArtTile_ArtNem_Ring,1,0)
-	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   8,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
+	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   4,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
 	dbglistobj ObjID_Starpost,	Obj79_MapUnc_1F424,   1,   0, make_art_tile(ArtTile_ArtNem_Checkpoint,0,0)
 	dbglistobj ObjID_SwingingPlatform, Obj15_Obj7A_MapUnc_10256, $48,   2, make_art_tile(ArtTile_ArtKos_LevelArt,0,0)
 	dbglistobj ObjID_CollapsPform,	Obj1F_MapUnc_11106,   0,   0, make_art_tile(ArtTile_ArtNem_MCZCollapsePlat,3,0)
@@ -88438,7 +84215,7 @@ DbgObjList_MCZ_End
 
 DbgObjList_CNZ: dbglistheader
 	dbglistobj ObjID_Ring,		Obj25_MapUnc_12382,   0,   0, make_art_tile(ArtTile_ArtNem_Ring,1,0)
-	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   8,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
+	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   4,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
 	dbglistobj ObjID_Starpost,	Obj79_MapUnc_1F424,   1,   0, make_art_tile(ArtTile_ArtNem_Checkpoint,0,0)
 	dbglistobj ObjID_PinballMode,	Obj03_MapUnc_1FFB8,   0,   0, make_art_tile(ArtTile_ArtNem_Ring,0,0)
 	dbglistobj ObjID_PinballMode,	Obj03_MapUnc_1FFB8,   4,   4, make_art_tile(ArtTile_ArtNem_Ring,0,0)
@@ -88469,7 +84246,7 @@ DbgObjList_CNZ_End
 
 DbgObjList_CPZ: dbglistheader
 	dbglistobj ObjID_Ring,		Obj25_MapUnc_12382,   0,   0, make_art_tile(ArtTile_ArtNem_Ring,1,0)
-	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   8,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
+	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   4,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
 	dbglistobj ObjID_Starpost,	Obj79_MapUnc_1F424,   1,   0, make_art_tile(ArtTile_ArtNem_Checkpoint,0,0)
 	dbglistobj ObjID_TippingFloor,	Obj0B_MapUnc_201A0, $70,   0, make_art_tile(ArtTile_ArtNem_CPZAnimatedBits,3,1)
 	dbglistobj ObjID_SpeedBooster,	Obj1B_MapUnc_223E2,   0,   0, make_art_tile(ArtTile_ArtNem_CPZBooster,3,1)
@@ -88496,7 +84273,7 @@ DbgObjList_CPZ_End
 
 DbgObjList_ARZ: dbglistheader
 	dbglistobj ObjID_Ring,		Obj25_MapUnc_12382,   0,   0, make_art_tile(ArtTile_ArtNem_Ring,1,0)
-	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   8,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
+	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   4,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
 	dbglistobj ObjID_Starpost,	Obj79_MapUnc_1F424,   1,   0, make_art_tile(ArtTile_ArtNem_Checkpoint,0,0)
 	dbglistobj ObjID_SwingingPlatform, Obj15_Obj83_MapUnc_1021E, $88,   2, make_art_tile(ArtTile_ArtKos_LevelArt,0,0)
 	dbglistobj ObjID_ARZPlatform,	Obj18_MapUnc_1084E,   1,   0, make_art_tile(ArtTile_ArtKos_LevelArt,2,0)
@@ -88528,7 +84305,7 @@ DbgObjList_ARZ_End
 
 DbgObjList_SCZ: dbglistheader
 	dbglistobj ObjID_Ring,		Obj25_MapUnc_12382,   0,   0, make_art_tile(ArtTile_ArtNem_Ring,1,0)
-	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   8,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
+	dbglistobj ObjID_Monitor,	Obj26_MapUnc_12D36,   4,   0, make_art_tile(ArtTile_ArtNem_Powerups,0,0)
 	dbglistobj ObjID_WFZPalSwitcher, Obj03_MapUnc_1FFB8,   0,   0, make_art_tile(ArtTile_ArtNem_Ring,0,0)
 	dbglistobj ObjID_Cloud,		ObjB3_MapUnc_3B32C, $5E,   0, make_art_tile(ArtTile_ArtNem_Clouds,2,0)
 	dbglistobj ObjID_Cloud,		ObjB3_MapUnc_3B32C, $60,   1, make_art_tile(ArtTile_ArtNem_Clouds,2,0)
