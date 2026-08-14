@@ -4328,11 +4328,19 @@ TitleScreen_Loop:
 	bsr.w	PlayMusic
 
 	moveq	#0,d0
-	move.b	(Title_screen_option).w,d0
-	bne.s	TitleScreen_CheckIfChose2P	; branch if not a 1-player game
+	bne.s	TitleScreen_ChoseSingleplayer	; branch if a singleplayer game
 
-	moveq	#0,d0
-	move.w	d0,(Two_player_mode_copy).w
+; ===========================================================================
+; loc_3D20:
+TitleScreen_ChoseOptions:
+	move.b	#GameModeID_OptionsMenu,(Game_Mode).w ; => OptionsMenu
+	move.b	#0,(Options_menu_box).w
+	rts
+; ===========================================================================
+
+TitleScreen_ChoseSingleplayer:
+	subq.b	#1,d0
+	bne.s	TitleScreen_ChoseOptions
 	move.w	d0,(Two_player_mode).w
     if emerald_hill_zone_act_1=0
 	move.w	d0,(Current_ZoneAndAct).w ; emerald_hill_zone_act_1
@@ -4351,30 +4359,6 @@ TitleScreen_Loop:
 	move.w	d0,(Got_Emerald).w
 	move.l	d0,(Got_Emeralds_array).w
 	move.l	d0,(Got_Emeralds_array+4).w
-	rts
-; ===========================================================================
-; loc_3CF6:
-TitleScreen_CheckIfChose2P:
-	subq.b	#1,d0
-	bne.s	TitleScreen_ChoseOptions
-
-	moveq	#1,d1
-	move.w	d1,(Two_player_mode_copy).w
-	move.w	d1,(Two_player_mode).w
-
-	moveq	#0,d0
-	move.w	d0,(Got_Emerald).w
-	move.l	d0,(Got_Emeralds_array).w
-	move.l	d0,(Got_Emeralds_array+4).w
-
-	move.b	#GameModeID_2PLevelSelect,(Game_Mode).w ; => LevelSelectMenu2P
-	move.b	#0,(Current_Zone_2P).w
-	rts
-; ---------------------------------------------------------------------------
-; loc_3D20:
-TitleScreen_ChoseOptions:
-	move.b	#GameModeID_OptionsMenu,(Game_Mode).w ; => OptionsMenu
-	move.b	#0,(Options_menu_box).w
 	rts
 ; ===========================================================================
 ; loc_3D2E:
