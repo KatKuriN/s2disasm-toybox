@@ -4328,6 +4328,7 @@ TitleScreen_Loop:
 	bsr.w	PlayMusic
 
 	moveq	#0,d0
+	move.b	(Title_screen_option).w,d0
 	beq.s	TitleScreen_ChoseSingleplayer	; branch if a singleplayer game
 
 ; ===========================================================================
