@@ -10801,9 +10801,9 @@ boxData macro txtlabel,vramAddr
 	dc.l txtlabel, vdpComm(vramAddr,VRAM,WRITE)
     endm
 
-	boxData	TextOptScr_PlayerSelect,VRAM_Plane_A_Name_Table+planeLoc(64,9,3)
+	boxData	TextOptScr_PlayerSelect,VRAM_Plane_A_Name_Table+planeLoc(64,9,6)
 ;	boxData	TextOptScr_VsModeItems,VRAM_Plane_A_Name_Table+planeLoc(64,9,11)
-	boxData	TextOptScr_SoundTest,VRAM_Plane_A_Name_Table+planeLoc(64,9,19)
+	boxData	TextOptScr_SoundTest,VRAM_Plane_A_Name_Table+planeLoc(64,9,14)
 
 off_92D2:
 	dc.l TextOptScr_SonicAndMiles
