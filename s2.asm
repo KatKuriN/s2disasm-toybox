@@ -17326,9 +17326,8 @@ DrawInitialBG:
 	; This is a nasty hack to work around the bug described above.
 	moveq	#0,d4
 	cmpi.b	#casino_night_zone,(Current_Zone).w
-	beq.w	++
+	beq.w	+
     endif
-+
 	moveq	#-block_height,d4
 +
 	moveq	#gameplay_plane_height/block_height-1,d6 ; Height of plane in blocks minus 1.
@@ -22994,8 +22993,6 @@ invincible_monitor:
 +
 	move.b	#ObjID_InvStars,(Sonic_InvincibilityStars+id).w ; load Obj35 (invincibility stars) at $FFFFD200
 	move.w	a1,(Sonic_InvincibilityStars+parent).w
-	rts
-+
 +
 	rts
 ; ===========================================================================
@@ -24195,7 +24192,6 @@ Obj0F_Init:
 	move.w	#spriteScreenPositionYCentered(92),y_pixel(a0)
 	move.l	#Obj0F_MapUnc_13B70,mappings(a0)
 	move.w	#make_art_tile(ArtTile_VRAM_Start,0,0),art_tile(a0)
-
 	andi.b	#1,(Title_screen_option).w
 	move.b	(Title_screen_option).w,mapping_frame(a0)
 
@@ -28300,7 +28296,7 @@ Touch_Rings_Done:
 ; loc_17168:
 Touch_ConsumeRing:
 	subq.w	#1,(Perfect_rings_left).w
-	bra.w	CollectRing	; if it was Sonic, branch here
+	bra.w	CollectRing
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to draw on-screen rings
@@ -40856,6 +40852,7 @@ JmpTo10_DeleteObject ; JmpTo
 ; ===========================================================================
 
 
+	jmpTos JmpTo_MarkObjGone
 
 
 
@@ -41065,13 +41062,14 @@ byte_1F850:	dc.b  $F,  0,$FF
 		rev02even
 byte_1F853:	dc.b   3,  1,  0,  1,$FD,  0
 		even
-; -------------------------------------------------------------------------------
+; ----------------------------------------------------------------------------
 ; sprite mappings
-; -------------------------------------------------------------------------------
+; ----------------------------------------------------------------------------
 Obj44_MapUnc_1F85A:	include "mappings/sprite/obj44.asm"
 ; ===========================================================================
 
 
+	jmpTos JmpTo2_MarkObjGone,JmpTo3_AnimateSprite
 
 
 
@@ -83933,8 +83931,6 @@ DbgObjList_SCZ_End
 
 
 
-
-
 ; ---------------------------------------------------------------------------
 ; "MAIN LEVEL LOAD BLOCK" (after Nemesis)
 ;
@@ -83984,14 +83980,14 @@ LevelArtPointers:
 	levartptrs PLCID_Mtz1,        PLCID_Mtz2,      PalID_MTZ,  ArtKos_MTZ, BM16_MTZ, BM128_MTZ ; MTZ1,2 ; METROPOLIS ZONE ACTS 1 & 2
 	levartptrs PLCID_Mtz1,        PLCID_Mtz2,      PalID_MTZ,  ArtKos_MTZ, BM16_MTZ, BM128_MTZ ; MTZ3   ; METROPOLIS ZONE ACT 3
 	levartptrs PLCID_Wfz1,        PLCID_Wfz2,      PalID_WFZ,  ArtKos_SCZ, BM16_WFZ, BM128_WFZ ; WFZ    ; WING FORTRESS ZONE
-	levartptrs PLCID_Htz1,        PLCID_Htz2,      PalID_HTZ,  ArtKos_EHZ, BM16_HTZ, BM128_EHZ ; HTZ    ; HILL TOP ZONE
+	levartptrs PLCID_Htz1,        PLCID_Htz2,      PalID_HTZ,  ArtKos_EHZ, BM16_EHZ, BM128_EHZ ; HTZ    ; HILL TOP ZONE
 	levartptrs PLCID_Hpz1,        PLCID_Hpz2,      PalID_HPZ,  ArtKos_HPZ, BM16_HPZ, BM128_HPZ ; HPZ    ; HIDDEN PALACE ZONE (UNUSED)
 	levartptrs PLCID_Unused3,     PLCID_Unused4,   PalID_EHZ4, ArtKos_EHZ, BM16_EHZ, BM128_EHZ ; Zone 9 ; LEVEL 9 (UNUSED)
 	levartptrs PLCID_Ooz1,        PLCID_Ooz2,      PalID_OOZ,  ArtKos_OOZ, BM16_OOZ, BM128_OOZ ; OOZ    ; OIL OCEAN ZONE
 	levartptrs PLCID_Mcz1,        PLCID_Mcz2,      PalID_MCZ,  ArtKos_MCZ, BM16_MCZ, BM128_MCZ ; MCZ    ; MYSTIC CAVE ZONE
 	levartptrs PLCID_Cnz1,        PLCID_Cnz2,      PalID_CNZ,  ArtKos_CNZ, BM16_CNZ, BM128_CNZ ; CNZ    ; CASINO NIGHT ZONE
 	levartptrs PLCID_Cpz1,        PLCID_Cpz2,      PalID_CPZ,  ArtKos_CPZ, BM16_CPZ, BM128_CPZ ; CPZ    ; CHEMICAL PLANT ZONE
-	levartptrs PLCID_Dez1,        PLCID_Dez2,      PalID_DEZ,  ArtKos_CPZ, BM16_DEZ, BM128_CPZ ; DEZ    ; DEATH EGG ZONE
+	levartptrs PLCID_Dez1,        PLCID_Dez2,      PalID_DEZ,  ArtKos_CPZ, BM16_CPZ, BM128_CPZ ; DEZ    ; DEATH EGG ZONE
 	levartptrs PLCID_Arz1,        PLCID_Arz2,      PalID_ARZ,  ArtKos_ARZ, BM16_ARZ, BM128_ARZ ; ARZ    ; AQUATIC RUIN ZONE
 	levartptrs PLCID_Scz1,        PLCID_Scz2,      PalID_SCZ,  ArtKos_SCZ, BM16_WFZ, BM128_WFZ ; SCZ    ; SKY CHASE ZONE
 
@@ -83999,25 +83995,6 @@ LevelArtPointers:
 	message "Warning: Table LevelArtPointers has \{cur_zone_id/1.0} entries, but it should have \{no_of_zones/1.0} entries"
     endif
 	!org LevelArtPointers+cur_zone_id*12
-
-LevelBlocks2P:
-	dc.l	BM16_EHZ_2P	; EHZ
-	dc.l	BM16_EHZ_2P	; Zone 1
-	dc.l	BM16_EHZ_2P	; WZ
-	dc.l	BM16_EHZ_2P	; Zone 3
-	dc.l	BM16_EHZ_2P	; MTZ1,2
-	dc.l	BM16_EHZ_2P	; MTZ3
-	dc.l	BM16_EHZ_2P	; WFZ
-	dc.l	BM16_EHZ_2P	; HTZ
-	dc.l	BM16_EHZ_2P	; HPZ
-	dc.l	BM16_EHZ_2P	; Zone 9
-	dc.l	BM16_EHZ_2P	; OOZ
-	dc.l	BM16_MCZ_2P	; MCZ
-	dc.l	BM16_CNZ_2P	; CNZ
-	dc.l	BM16_EHZ_2P	; CPZ
-	dc.l	BM16_EHZ_2P	; DEZ
-	dc.l	BM16_EHZ_2P	; ARZ
-	dc.l	BM16_EHZ_2P	; SCZ
 
 ; ---------------------------------------------------------------------------
 ; END Art_Ptrs_Array[17]
