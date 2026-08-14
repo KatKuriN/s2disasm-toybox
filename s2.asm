@@ -4328,7 +4328,7 @@ TitleScreen_Loop:
 	bsr.w	PlayMusic
 
 	moveq	#0,d0
-	bne.s	TitleScreen_ChoseSingleplayer	; branch if a singleplayer game
+	beq.s	TitleScreen_ChoseSingleplayer	; branch if a singleplayer game
 
 ; ===========================================================================
 ; loc_3D20:
@@ -4339,8 +4339,7 @@ TitleScreen_ChoseOptions:
 ; ===========================================================================
 
 TitleScreen_ChoseSingleplayer:
-	subq.b	#1,d0
-	bne.s	TitleScreen_ChoseOptions
+
 	move.w	d0,(Two_player_mode).w
     if emerald_hill_zone_act_1=0
 	move.w	d0,(Current_ZoneAndAct).w ; emerald_hill_zone_act_1
@@ -24209,12 +24208,12 @@ Obj0F_Main:
 	beq.s	+
 	subq.b	#1,d2
 	bcc.s	+
-	move.b	#2,d2
+	move.b	#1,d2
 +
 	btst	#button_down,d0
 	beq.s	+
 	addq.b	#1,d2
-	cmpi.b	#3,d2
+	cmpi.b	#2,d2
 	blo.s	+
 	moveq	#0,d2
 +
